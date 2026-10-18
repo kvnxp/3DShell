@@ -44,12 +44,15 @@ Frame order inside `UI::ScreenManager::Run()` (every iteration):
 | `UI::ScrollBar` | Vertical track/thumb; `SetRange(item_count, page_size)`, `Value()` = first visible row, finger drag. |
 | `UI::Dialog` | Panel with title bar; base for popups (derives from `ContainerControl`). |
 
-## 3. Shared chrome (drawn by helper functions, not yet components)
+## 3. Shared chrome (application controls)
 
-Both are free functions in namespace `GUI` (`source/app/gui/gui.cpp`) —
-candidates to be converted into `StatusBar` / `TouchBar` controls:
+Both are real controls now, in `source/app/controls/` — application-level
+because they depend on app assets and hardware services:
 
-### 3.1 Status bar — `GUI::DisplayStatusBar()` (gfx0 only, y = 0..15)
+### 3.1 Status bar — `GUI::StatusBar` (gfx0 only, y = 0..15)
+
+Class: `source/app/controls/status_bar.h`. Drawn as part of each screen's
+top chrome (`FileBrowserScreen`, `TextReaderScreen`).
 
 | Element | Position | Drawn with | Assets |
 |---|---|---|---|
@@ -59,21 +62,28 @@ candidates to be converted into `StatusBar` / `TouchBar` controls:
 | Battery icon | left of the percentage | `C2D::Image(battery_icons[level])`, level from `PTMU_GetBatteryLevel` (0..5) | `battery_icons[6]` |
 | Wi-Fi icon | left of the battery icon | `C2D::Image(wifi_icons[strength])`, from `osGetWifiStrength` (0..3) | `wifi_icons[4]` |
 
-### 3.2 Touch bar — `GUI::DisplayTouchButtons(TouchBarSection)` (gfx1 only, y = 0..20)
+### 3.2 Touch bar — `GUI::TouchBar` (gfx1 only, y = 0..20)
 
-| Element | Position | Notes |
-|---|---|---|
-| Home button | x = 2 | Overlay variant when `section == TOUCH_BAR_BROWSER` |
-| Options button | x = 25 | Overlay when `TOUCH_BAR_ACTIONS` |
-| Settings button | x = 50 | Overlay when `TOUCH_BAR_SETTINGS` |
-| SD card button | x = 250 | Overlay when `archive == sdmc_archive` |
-| NAND (secure) button | x = 275 | Overlay when `archive == nand_archive` and `cfg.dev_options` |
-| Search button | x = 300 | Static icon |
+Class: `source/app/controls/touch_bar.h`. A `UI::ContainerControl` holding
+six `GUI::TouchButton` children (icon button with light/dark/active variants
+and a `Click` event), laid out by `UI::FlowLayout` in two groups: the LEFT
+group flows from the left edge, the RIGHT group is anchored to the right
+edge. Invisible buttons are skipped by the layout, so the group re-packs
+(no dead gaps). Hit testing and touch capture are handled by the container
+tree — no hard-coded zones.
 
-Light/dark theme variants come from `icon_*` / `icon_*_dark`; the pressed
-look from `icon_*_overlay`. Touch handling lives in
-`FileBrowserScreen::HandleTouchBar()` (home/options/settings/SD/NAND/search
-zones), matching these coordinates.
+| Button | Group | Event | Overlay (active) when |
+|---|---|---|---|
+| Home | LEFT | `Home().Click` | `section == SECTION_BROWSER` |
+| Options | LEFT | `Options().Click` | `section == SECTION_ACTIONS` |
+| Settings | LEFT | `Settings().Click` | `section == SECTION_SETTINGS` |
+| SD card | RIGHT | `SD().Click` | `archive == sdmc_archive` |
+| NAND (secure) | RIGHT | `Secure().Click` | `archive == nand_archive` (needs `cfg.dev_options` to switch) |
+| Search | RIGHT | `Search().Click` | — |
+
+`TouchBar::SetSection()` controls which button shows its overlay variant;
+screens wire the `Click` events to their own actions (the browser pushes
+dialogs / switches archives, the text reader closes the editor).
 
 ## 4. Screens
 
@@ -214,11 +224,10 @@ gfx1 — `TextReaderScreen::DrawBottom()`:
 
 | Item | Today | Target |
 |---|---|---|
-| Status bar (clock/battery/wifi) | `GUI::DisplayStatusBar()` free function, invoked per screen | `StatusBar` control in `source/app/controls/`, added once to each screen's `TopPanel()` |
-| Touch bar (buttons) | `GUI::DisplayTouchButtons(section)` free function | `TouchBar` control with section state |
 | Dialog textures + selector rects | Direct `C2D::Image`/`C2D::Rect` calls in each screen | `UI::Dialog` / `UI::Button` controls (already in the framework) once theme colours are injectable |
 | File list | Custom loop in `FileBrowserScreen::DrawTop()` | `ListView` control (framework candidate) |
 | Browser god-struct `MenuItem` | Still shared by pointer with dialogs (entries, checked, texture) | Split into per-screen state models |
+| Status bar / touch bar | `GUI::StatusBar` / `GUI::TouchBar` app controls, held as members by the screens | Move into the screens' `TopPanel()`/`BottomPanel()` containers for tree-driven drawing/routing |
 
 ## 6. Theme system
 
