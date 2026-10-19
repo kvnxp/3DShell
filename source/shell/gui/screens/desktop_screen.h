@@ -1,0 +1,53 @@
+#ifndef _3D_SHELL_DESKTOP_SCREEN_H
+#define _3D_SHELL_DESKTOP_SCREEN_H
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <panel_app.h>
+#include <status_bar.h>
+#include <touch_bar.h>
+#include "screen.h"
+#include "screen_manager.h"
+
+namespace GUI {
+
+/* The shell home screen: wallpaper on the top display; on the bottom
+ * display the touch bar plus one panel app at a time (app drawer,
+ * settings, netloader) rendered below the bar. */
+class DesktopScreen : public UI::Screen {
+public:
+    const char *Name() const override { return "desktop"; }
+    DesktopScreen();
+
+
+    void OnFrame(u64 delta_time) override;
+    void DrawTop() override;
+    void DrawBottom() override;
+    void OnKeyDown(u32 k_down) override;
+    void OnKeyHeld(u32 k_held) override;
+    void OnTouch(const touchPosition &touch, bool down) override;
+
+    static void RequestDrawer();
+    static bool ConsumeDrawerRequest();
+
+private:
+    void OpenExplorer();
+    void OpenDrawer();
+    void CloseDrawer();
+
+    StatusBar status_bar_;
+    TouchBar touch_bar_;
+    bool bar_touching_ = false;
+    bool panel_touching_ = false;
+
+    std::unique_ptr<PanelApp> drawer_;
+    std::unique_ptr<PanelApp> dying_panel_;
+
+    std::vector<std::string> pending_tab_removals_;
+};
+
+}
+
+#endif

@@ -31,3 +31,4 @@ romfs/
 # OS / local noise
 .DS_Store
 test.txt
+node_modules

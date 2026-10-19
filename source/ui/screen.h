@@ -30,6 +30,9 @@ public:
     u32 TopBackground() const { return top_background_; }
     void SetTopBackground(u32 colour) { top_background_ = colour; }
 
+    /* Window-manager identity, used by the debug channel. */
+    virtual const char *Name() const { return "screen"; }
+
     u32 BottomBackground() const { return bottom_background_; }
     void SetBottomBackground(u32 colour) { bottom_background_ = colour; }
 

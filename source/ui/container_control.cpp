@@ -6,6 +6,16 @@ void ContainerControl::Add(std::unique_ptr<Control> control) {
     controls_.push_back(std::move(control));
 }
 
+void ContainerControl::Remove(Control *control) {
+    for (auto it = controls_.begin(); it != controls_.end(); ++it) {
+        if (it->get() == control) {
+            controls_.erase(it);
+            touch_capture_ = nullptr;
+            return;
+        }
+    }
+}
+
 void ContainerControl::Clear() {
     controls_.clear();
     touch_capture_ = nullptr;

@@ -14,7 +14,7 @@ extern C2D_Image file_icons[NUM_ICONS], icon_dir, icon_dir_dark, wifi_icons[4], 
 	icon_home, icon_home_dark, icon_home_overlay, icon_options, icon_options_dark, icon_options_overlay, \
 	icon_settings, icon_settings_dark, icon_settings_overlay, icon_ftp, icon_ftp_dark, icon_ftp_overlay, \
 	icon_sd, icon_sd_dark, icon_sd_overlay, icon_secure, icon_secure_dark, icon_secure_overlay, icon_search, \
-	icon_nav_drawer, icon_actions, icon_back;
+	icon_nav_drawer, icon_actions, icon_back, icon_notepad;
 
 namespace Textures {
 	void Init(void);
