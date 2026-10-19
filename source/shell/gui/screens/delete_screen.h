@@ -10,7 +10,9 @@ namespace GUI {
 
 class DeleteScreen : public UI::Screen {
 public:
+    const char *Name() const override { return "delete-dialog"; }
     DeleteScreen(UI::Screen *owner, MenuItem *item);
+
 
     void OnFrame(u64 delta_time) override;
     void DrawTop() override;

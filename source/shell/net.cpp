@@ -10,13 +10,13 @@
 #include "log.h"
 #include "net.h"
 
+#include "network/network.h"
+
 s64 download_offset = 0, download_size = 1;
 bool download_progress = false;
 
 namespace Net {
     static s64 offset = 0;
-    static void *soc_buf = nullptr;
-    static bool soc_initialized = false;
 
     static int ProgressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
         download_offset = dlnow;
@@ -25,40 +25,13 @@ namespace Net {
     }
 
     Result Init(void) {
-        Result ret = 0;
-
-        /* Idempotent: socInit() fails if the SOC service is already up
-         * (e.g. NetLoader re-entered after the updater ran). */
-        if (soc_initialized)
-            return 0;
-
-        soc_buf = aligned_alloc(0x1000, 0x100000);
-
-        if (!soc_buf)
-            return -1;
-            
-        if (R_FAILED(ret = socInit(static_cast<u32* >(soc_buf), 0x100000))) {
-            Log::Error("socInit() failed: 0x%x\n", ret);
-            std::free(soc_buf);
-            soc_buf = nullptr;
-            return ret;
-        }
-
-        soc_initialized = true;
-        return 0;
+        /* Shared SOC subsystem: the kernel holds its own reference, so
+         * this is a no-op when it is already up. */
+        return NetworkSubsystem::Init()? 0 : -1;
     }
 
     void Exit(void) {
-        if (!soc_initialized)
-            return;
-
-        soc_initialized = false;
-        socExit();
-
-        if (soc_buf) {
-            std::free(soc_buf);
-            soc_buf = nullptr;
-        }
+        NetworkSubsystem::Exit();
     }
     
     bool GetNetworkStatus(void) {

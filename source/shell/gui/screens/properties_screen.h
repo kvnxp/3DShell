@@ -10,7 +10,9 @@ namespace GUI {
 
 class PropertiesScreen : public UI::Screen {
 public:
+    const char *Name() const override { return "properties-dialog"; }
     PropertiesScreen(UI::Screen *owner, MenuItem *item);
+
 
     void OnFrame(u64 delta_time) override;
     void DrawTop() override;

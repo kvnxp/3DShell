@@ -9,6 +9,7 @@
 #include "touch.h"
 
 #include "apps.h"
+#include "logger/logger.h"
 
 namespace GUI {
 
@@ -46,6 +47,14 @@ DesktopScreen::DesktopScreen() {
 
     /* The right side of the bar is reserved space for the active app's
      * own actions. Settings and NetLoader are reached from the drawer. */
+
+    /* Window close X (Windows Mobile style): visible while a panel app
+     * is open; closes it and returns to the empty desktop. */
+    touch_bar_.AddTextButton("X", ERROR_COLOUR, true).Click = [this]() {
+        ClosePanel();
+    };
+
+    NetworkLogger::PrintfTagged("SHELL", "desktop: status bar + touch bar ready");
 }
 
 void DesktopScreen::OnFrame(u64 delta_time) {
@@ -134,12 +143,16 @@ void DesktopScreen::TogglePanel(PanelType type, std::unique_ptr<PanelApp> app) {
 
     panel_app_ = std::move(app);
     panel_type_ = type;
+    UI::ScreenManager::Instance().WindowOpened();
+    NetworkLogger::PrintfTagged("WM", "panel open type=%d windows=%d", (int)type, UI::ScreenManager::Instance().WindowCount());
 }
 
 void DesktopScreen::ClosePanel() {
     if (panel_app_) {
         dying_panel_ = std::move(panel_app_);
         panel_type_ = PanelType::None;
+        UI::ScreenManager::Instance().WindowClosed();
+        NetworkLogger::PrintfTagged("WM", "panel closed windows=%d", UI::ScreenManager::Instance().WindowCount());
     }
 }
 

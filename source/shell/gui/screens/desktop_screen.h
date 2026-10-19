@@ -16,7 +16,9 @@ namespace GUI {
  * settings, netloader) rendered below the bar. */
 class DesktopScreen : public UI::Screen {
 public:
+    const char *Name() const override { return "desktop"; }
     DesktopScreen();
+
 
     void OnFrame(u64 delta_time) override;
     void DrawTop() override;

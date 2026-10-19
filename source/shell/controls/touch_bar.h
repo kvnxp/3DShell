@@ -9,7 +9,9 @@
 
 #include <container_control.h>
 #include <layout.h>
+#include <screen_manager.h>
 
+#include "controls/button.h"
 #include "touch_button.h"
 #include <c2d_helper.h>
 #include <colours.h>
@@ -89,6 +91,22 @@ public:
         return ref;
     }
 
+    /* Text-based button for the bar (e.g. the window close X). Added last
+     * in a group it lands rightmost. */
+    UI::Button &AddTextButton(const std::string &text, u32 background, bool right_group) {
+        auto button = std::make_unique<UI::Button>(text, UI::Rect{}, background, WHITE);
+        UI::Button &ref = *button;
+
+        UI::FlowLayout::Item item{&ref, BUTTON_SIZE};
+        if (right_group)
+            right_items_.push_back(item);
+        else
+            left_items_.push_back(item);
+
+        Add(std::move(button));
+        return ref;
+    }
+
     void Draw() override {
         C2D::Rect(bounds_.x, bounds_.y, bounds_.w, bounds_.h, cfg.dark_theme? STATUS_BAR_DARK : MENU_BAR_LIGHT);
 
@@ -106,6 +124,11 @@ public:
             secure_->SetVisible(cfg.dev_options);
             secure_->SetActive(archive == nand_archive);
         }
+
+        /* The close X answers to the window manager, not to each screen:
+         * it exists while any window (fullscreen app or panel app) is open. */
+        if (close_btn_)
+            close_btn_->SetVisible(UI::ScreenManager::Instance().HasWindow());
 
         Reflow();
 
@@ -126,6 +149,7 @@ private:
     }
 
     Section section_ = SECTION_NONE;
+    UI::Button *close_btn_ = nullptr;
     TouchButton *home_ = nullptr;
     TouchButton *options_ = nullptr;
     TouchButton *settings_ = nullptr;
@@ -133,6 +157,7 @@ private:
     TouchButton *secure_ = nullptr;
     std::vector<UI::FlowLayout::Item> left_items_;
     std::vector<UI::FlowLayout::Item> right_items_;
+    static constexpr float BUTTON_SIZE = 20.0f;
 };
 
 }

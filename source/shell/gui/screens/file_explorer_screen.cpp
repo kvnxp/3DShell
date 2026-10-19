@@ -17,7 +17,6 @@
 #include "options_screen.h"
 #include "osk.h"
 #include "properties_screen.h"
-#include "settings_screen.h"
 #include "smdh.h"
 #include "text_reader_screen.h"
 #include "textures.h"
@@ -86,6 +85,11 @@ namespace GUI {
                 RefreshListing();
                 RecalcStorageSize(&item_);
             }
+        };
+
+        /* Window close X (Windows Mobile style): pops back to the desktop. */
+        touch_bar_.AddTextButton("X", ERROR_COLOUR, true).Click = [this]() {
+            UI::ScreenManager::Instance().Pop();
         };
     }
 
@@ -455,6 +459,11 @@ namespace GUI {
         if (dialog_open_)
             return;
 
+        if (settings_panel_) {
+            settings_panel_->Draw();
+            return;
+        }
+
         DisplaySmdhPanel();
         DisplayActionGrid();
     }
@@ -507,12 +516,24 @@ namespace GUI {
     }
 
     void FileExplorerScreen::PushSettings() {
-        auto settings = std::make_unique<SettingsScreen>(this);
-        settings->ListingChanged = [this]() {
+        if (settings_panel_) {
+            dying_panel_ = std::move(settings_panel_);
+            settings_panel_ = nullptr;
+            UI::ScreenManager::Instance().WindowClosed();
+            return;
+        }
+
+        settings_panel_ = std::make_unique<GUI::SettingsPanel>();
+        settings_panel_->Closed = [this]() {
+            dying_panel_ = std::move(settings_panel_);
+            settings_panel_ = nullptr;
+            UI::ScreenManager::Instance().WindowClosed();
+        };
+        settings_panel_->ListingChanged = [this]() {
             RefreshListing();
             SetBrowserStart();
         };
-        OpenDialog(std::move(settings));
+        UI::ScreenManager::Instance().WindowOpened();
     }
 
     void FileExplorerScreen::OnKeyDown(u32 k_down) {
@@ -722,6 +743,14 @@ namespace GUI {
         if (in_bar) {
             touch_bar_.OnTouch(touch, down);
             bar_touching_ = down;
+            return;
+        }
+
+        bar_touching_ = false;
+
+        if (settings_panel_) {
+            if (down)
+                settings_panel_->OnTouch(touch, down);
         }
     }
 

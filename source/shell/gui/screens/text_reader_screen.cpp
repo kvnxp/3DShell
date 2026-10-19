@@ -17,6 +17,11 @@ TextReaderScreen::TextReaderScreen(MenuItem *item)
     touch_bar_.AddButton(TouchBar::ICON_HOME, false).Click = [this]() {
         Notepad::Close();
     };
+
+    /* Window close X (Windows Mobile style): closes the editor. */
+    touch_bar_.AddTextButton("X", ERROR_COLOUR, true).Click = [this]() {
+        Notepad::Close();
+    };
 }
 
 void TextReaderScreen::OnFrame(u64 delta_time) {

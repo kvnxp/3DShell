@@ -5,7 +5,9 @@
 #include "colours.h"
 #include "config.h"
 #include "fs.h"
+#include "kernel.h"
 #include "gui.h"
+#include "logger/logger.h"
 #include "net.h"
 #include "screen_manager.h"
 #include "textures.h"
@@ -63,7 +65,11 @@ namespace GUI {
     Result Loop(void) {
         Result ret = 0;
 
+        UI::ScreenManager::Instance().SetFrameHook(Kernel::Poll);
+        NetworkLogger::PrintfTagged("SHELL", "frame hook installed (kernel poll per frame)");
+        NetworkLogger::PrintfTagged("SHELL", "starting desktop shell");
         UI::ScreenManager::Instance().Run(std::make_unique<DesktopScreen>());
+        NetworkLogger::PrintfTagged("SHELL", "shell loop ended");
 
         return ret;
     }

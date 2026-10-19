@@ -13,7 +13,9 @@ namespace GUI {
 
 class TextReaderScreen : public UI::Screen {
 public:
+    const char *Name() const override { return "editor"; }
     TextReaderScreen(MenuItem *item);
+
 
     void OnFrame(u64 delta_time) override;
     void DrawTop() override;

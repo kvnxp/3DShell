@@ -12,7 +12,9 @@ namespace GUI {
 
 class ImageViewerScreen : public UI::Screen {
 public:
+    const char *Name() const override { return "viewer"; }
     ImageViewerScreen(MenuItem *item);
+
 
     void OnFrame(u64 delta_time) override;
     void DrawTop() override;

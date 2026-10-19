@@ -16,12 +16,15 @@ void ScreenManager::Run(std::unique_ptr<Screen> root) {
     running_ = true;
 
     u64 last_time = osGetTime();
-    touchPosition last_touch = {};
+    last_touch_ = {};
 
     while (running_ && aptMainLoop() && !stack_.empty()) {
         u64 current_time = osGetTime();
         delta_time_ = current_time - last_time;
         last_time = current_time;
+
+        if (frame_hook_)
+            frame_hook_();
 
         Screen *screen = Current();
         if (!screen)
@@ -52,11 +55,11 @@ void ScreenManager::Run(std::unique_ptr<Screen> root) {
         if (Current() == screen)
             screen->OnKeyDown(k_down);
 
-        touchPosition touch = last_touch;
+        touchPosition touch = last_touch_;
         bool touching = (k_held & KEY_TOUCH) != 0;
         if (touching) {
             hidTouchRead(&touch);
-            last_touch = touch;
+            last_touch_ = touch;
         }
 
         if (Current() == screen)
@@ -84,6 +87,10 @@ void ScreenManager::Pop() {
 
 Screen *ScreenManager::Current() const {
     return stack_.empty() ? nullptr : stack_.back().get();
+}
+
+const Screen *ScreenManager::Focused() const {
+    return Current();
 }
 
 bool ScreenManager::IsCurrent(const Screen *screen) const {

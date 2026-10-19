@@ -10,7 +10,9 @@ namespace GUI {
 
 class OptionsScreen : public UI::Screen {
 public:
+    const char *Name() const override { return "options-dialog"; }
     OptionsScreen(UI::Screen *owner, MenuItem *item);
+
 
     void OnFrame(u64 delta_time) override;
     void DrawTop() override;

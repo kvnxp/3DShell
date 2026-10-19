@@ -6,6 +6,7 @@
 #include "controls/scroll_bar.h"
 #include <status_bar.h>
 #include <touch_bar.h>
+#include "settings_panel.h"
 #include "fs.h"
 #include "screen.h"
 #include "screen_manager.h"
@@ -14,7 +15,9 @@ namespace GUI {
 
 class FileExplorerScreen : public UI::Screen {
 public:
+    const char *Name() const override { return "explorer"; }
     FileExplorerScreen();
+
     ~FileExplorerScreen() override;
 
     Result Init();
@@ -61,6 +64,10 @@ private:
     UI::ScrollBar scroll_bar_;
     StatusBar status_bar_;
     TouchBar touch_bar_;
+
+    /* Settings panel (rendered over the bottom content, toggled). */
+    std::unique_ptr<GUI::SettingsPanel> settings_panel_;
+    std::unique_ptr<GUI::SettingsPanel> dying_panel_;
 
     int start_ = 0;
     u64 key_repeat_timestamp_ = 0;
