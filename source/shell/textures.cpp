@@ -27,7 +27,7 @@ C2D_Image file_icons[NUM_ICONS], icon_dir, icon_dir_dark, wifi_icons[4], \
     icon_home, icon_home_dark, icon_home_overlay, icon_options, icon_options_dark, icon_options_overlay, \
     icon_settings, icon_settings_dark, icon_settings_overlay, icon_ftp, icon_ftp_dark, icon_ftp_overlay, \
     icon_sd, icon_sd_dark, icon_sd_overlay, icon_secure, icon_secure_dark, icon_secure_overlay, icon_search, \
-    icon_nav_drawer, icon_actions, icon_back;
+    icon_nav_drawer, icon_actions, icon_back, icon_notepad;
 
 static const u32 BYTES_PER_PIXEL = 4;
 
@@ -423,6 +423,7 @@ namespace Textures {
         icon_nav_drawer = C2D_SpriteSheetGetImage(spritesheet, sprites_ic_material_light_navigation_drawer_idx);
         icon_actions = C2D_SpriteSheetGetImage(spritesheet, sprites_ic_material_light_contextual_action_idx);
         icon_back = C2D_SpriteSheetGetImage(spritesheet, sprites_ic_arrow_back_normal_idx);
+        icon_notepad = C2D_SpriteSheetGetImage(spritesheet, sprites_description_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24_idx);
         wifi_icons[0] = C2D_SpriteSheetGetImage(spritesheet, sprites_stat_sys_wifi_signal_0_idx);
         wifi_icons[1] = C2D_SpriteSheetGetImage(spritesheet, sprites_stat_sys_wifi_signal_1_idx);
         wifi_icons[2] = C2D_SpriteSheetGetImage(spritesheet, sprites_stat_sys_wifi_signal_2_idx);

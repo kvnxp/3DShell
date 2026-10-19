@@ -125,6 +125,22 @@ namespace Notepad {
     bool Save(void) {
         if (!data.open) return false;
 
+        std::string target = data.filepath;
+        std::string target_name = data.filename;
+        if (target.empty()) {
+            /* Untitled document: ask for a name and save in the current directory. */
+            std::string name = OSK::GetText("", "File name");
+            if (name.empty()) return false;
+            if (name.find('/') == std::string::npos && name.find('.') == std::string::npos) name += ".txt";
+            if (name.find('/') != std::string::npos || FS::FileExists(archive, cfg.cwd + name)) {
+                saved_flash = osGetTime() + 1500;
+                last_save_ok = false;
+                return false;
+            }
+            target = cfg.cwd + name;
+            target_name = name;
+        }
+
         std::string out;
         for (size_t i = 0; i < data.lines.size(); i++) {
             out += data.lines[i];
@@ -132,7 +148,7 @@ namespace Notepad {
         }
 
         std::u16string path_u16 =
-            std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.from_bytes(data.filepath.data());
+            std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.from_bytes(target.data());
 
         // Truncate then write. Open WRITE, set size 0, write.
         Handle handle = 0;
@@ -162,10 +178,23 @@ namespace Notepad {
             FSFILE_Close(handle);
         }
 
+        data.filepath = target;
+        data.filename = target_name;
         data.modified = false;
         saved_flash = osGetTime() + 1500;
         last_save_ok = true;
         return true;
+    }
+
+    void NewDocument(void) {
+        Close();
+        data.filepath.clear();
+        data.filename = "Untitled.txt";
+        data.lines.assign(1, std::string());
+        data.mode = NOTEPAD_EDIT;
+        data.modified = false;
+        data.open = true;
+        VirtualKeyboard::Reset();
     }
 
     void InsertChar(char c) {

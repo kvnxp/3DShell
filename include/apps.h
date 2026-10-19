@@ -11,6 +11,7 @@
 #include "textures.h"
 
 #include "file_explorer_screen.h"
+#include "notepad_screen.h"
 #include "net_loader_panel.h"
 #include "settings_panel.h"
 
@@ -20,6 +21,7 @@ namespace Apps {
 
     enum Id {
         AppExplorer,
+        AppNotepad,
         AppNetLoader,
         AppSettings
     };
@@ -43,6 +45,11 @@ namespace Apps {
                   if (R_FAILED(screen->Init()))
                       return nullptr;
                   return screen;
+              },
+              nullptr },
+            { "Notepad", icon_notepad, AppNotepad,
+              []() -> std::unique_ptr<UI::Screen> {
+                  return std::make_unique<GUI::NotepadScreen>();
               },
               nullptr },
             { "NetLoader", icon_ftp, AppNetLoader, nullptr,

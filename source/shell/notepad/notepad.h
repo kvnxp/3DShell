@@ -31,6 +31,7 @@ typedef struct {
 namespace Notepad {
     bool IsTextFile(const std::string &filename);
     bool Open(const std::string &filepath, const std::string &filename);
+    void NewDocument(void);
     void Close(void);
     bool IsOpen(void);
     bool IsModified(void);
