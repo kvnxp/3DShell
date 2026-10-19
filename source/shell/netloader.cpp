@@ -35,8 +35,8 @@
 #include "netloader.h"
 
 #define NL_RECV_CHUNK (16 * 1024) /* 3dslink ZLIB_CHUNK upper bound */
-#define NL_OUT_CHUNK (64 * 1024)
-#define NL_WRITE_CHUNK (64 * 1024)
+#define NL_OUT_CHUNK (256 * 1024)
+#define NL_WRITE_CHUNK (512 * 1024)
 
 /* Shared transfer state (worker thread -> UI panel). */
 static volatile bool nl_busy = false;
@@ -94,7 +94,7 @@ static bool NL_WaitAll(int sock, void *buffer, size_t size) {
 static bool NL_WriteBuffered(Handle file, u8 *wrbuf, size_t *wrpos, const u8 *data, size_t have, u64 *offset) {
     if (*wrpos + have > NL_WRITE_CHUNK) {
         u32 written = 0;
-        if (R_FAILED(FSFILE_Write(file, &written, *offset, wrbuf, *wrpos, FS_WRITE_UPDATE_TIME)))
+        if (R_FAILED(FSFILE_Write(file, &written, *offset, wrbuf, *wrpos, 0)))
             return false;
         *offset += *wrpos;
         *wrpos = 0;
@@ -180,7 +180,7 @@ static bool NL_Transfer(int sock, Handle file, const char *name, u32 filelen, si
             break;
         }
 
-        if (ok && ((total - last_redraw > (64 * 1024)) || (ret == Z_STREAM_END))) {
+        if (ok && ((total - last_redraw > (256 * 1024)) || (ret == Z_STREAM_END))) {
             u64 now = osGetTime();
             u64 elapsed = (now > last_redraw_time)? (now - last_redraw_time) : 1;
             u32 speed_kb = (u32)((total - last_redraw) * 1000 / elapsed / 1024);
@@ -202,7 +202,7 @@ static bool NL_Transfer(int sock, Handle file, const char *name, u32 filelen, si
     if (ok) {
         if (wrpos > 0) {
             u32 written = 0;
-            if (R_FAILED(FSFILE_Write(file, &written, offset, wrbuf, wrpos, FS_WRITE_UPDATE_TIME)))
+            if (R_FAILED(FSFILE_Write(file, &written, offset, wrbuf, wrpos, 0)))
                 ok = false;
             offset += wrpos;
         }
@@ -211,17 +211,14 @@ static bool NL_Transfer(int sock, Handle file, const char *name, u32 filelen, si
             ok = R_SUCCEEDED(FSFILE_Flush(file));
     }
 
-    if (ok && ret == Z_STREAM_END)
-        ret = Z_OK;
-    else if (ok)
-        ret = Z_DATA_ERROR;
+    bool success = ok && (ret == Z_STREAM_END);
 
     inflateEnd(&strm);
     free(inbuf);
     free(outbuf);
     free(wrbuf);
     *out_total = total;
-    return (ret == Z_OK);
+    return success;
 }
 
 static int NL_RunTransfer(int datafd) {

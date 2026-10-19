@@ -8,6 +8,10 @@
 
 #include "screen.h"
 
+namespace GUI {
+    class TaskManagerPanel;
+}
+
 namespace UI {
 
 class ScreenManager {
@@ -38,8 +42,21 @@ public:
 
     u64 DeltaTime() const { return delta_time_; }
 
+    /* Task Manager overlay (global, SELECT to toggle). */
+    void ToggleTaskManager();
+    void DrawTaskManagerOverlay();
+    void HandleTaskManagerKey(u32 k_down);
+    void HandleTaskManagerTouch(const touchPosition &touch, bool down);
+    
+    /* Task Manager stack inspection methods. */
+    size_t StackSize() const { return stack_.size(); }
+    Screen *GetScreenAt(size_t index) const;
+    void CloseScreenAt(size_t index);
+    void SwitchToScreenAt(size_t index);
+
 private:
-    ScreenManager() = default;
+    ScreenManager();
+    ~ScreenManager();
 
     Screen *Current() const;
 
@@ -50,6 +67,8 @@ private:
     u64 delta_time_ = 0;
     touchPosition last_touch_ = {};
     void (*frame_hook_)() = nullptr;
+
+    std::unique_ptr<GUI::TaskManagerPanel> task_manager_;
 };
 
 }

@@ -7,6 +7,7 @@
 #include <status_bar.h>
 #include <touch_bar.h>
 #include "settings_panel.h"
+#include "actions_panel.h"
 #include "fs.h"
 #include "screen.h"
 #include "screen_manager.h"
@@ -59,15 +60,21 @@ private:
     void PushOptions();
     void PushSettings();
     void OpenDialog(std::unique_ptr<UI::Screen> screen);
+    void OpenDrawer();
+    void CloseDrawer();
 
     MenuItem item_;
     UI::ScrollBar scroll_bar_;
     StatusBar status_bar_;
     TouchBar touch_bar_;
 
-    /* Settings panel (rendered over the bottom content, toggled). */
-    /* settings panel now lives as a touch-bar tab */
-    std::unique_ptr<GUI::SettingsPanel> dying_panel_;
+    /* Drawer overlay (opens on top of the browser without closing it). */
+    std::unique_ptr<GUI::PanelApp> drawer_;
+
+    /* Panels (rendered over the bottom content, toggled). */
+    std::unique_ptr<GUI::SettingsPanel> settings_panel_;
+    std::unique_ptr<GUI::ActionsPanel> actions_panel_;
+    std::unique_ptr<GUI::PanelApp> dying_panel_;
 
     int start_ = 0;
     u64 key_repeat_timestamp_ = 0;

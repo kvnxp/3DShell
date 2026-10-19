@@ -52,7 +52,7 @@ public:
         std::string id;
         std::string label;
         std::unique_ptr<GUI::PanelApp> content;
-        TabButton *button = nullptr;
+        GUI::TouchButton *button = nullptr;
         bool right_group = false;
     };
 
@@ -173,6 +173,11 @@ public:
             }
         }
 
+        /* Keep active tab in sync with the tab list so a stale id can never
+         * keep the close button visible after every tab is gone. */
+        if (tabs_.empty())
+            active_tab_.clear();
+
         /* The close X answers to the window manager, not to each screen:
          * it exists while any window (fullscreen app or panel app) is open. */
         if (close_btn_) {
@@ -190,28 +195,41 @@ public:
     void SetCloseUseWM(bool use) { close_use_wm_ = use; }
 
     /* Tabs: buttons that show an associated PanelApp content below the bar. */
-    Tab &AddTab(const std::string &id, const std::string &label,
+    Tab &AddTab(const std::string &id, const std::string &label, C2D_Image icon,
                 std::unique_ptr<GUI::PanelApp> content, bool right_group) {
         for (auto &t : tabs_) {
             if (t.id == id) {
+                SetActiveTab(id);
                 return t;
             }
         }
 
-        auto btn = std::make_unique<TabButton>(
-            label, cfg.dark_theme? STATUS_BAR_DARK : MENU_BAR_LIGHT, WHITE);
-        TabButton *btnPtr = btn.get();
+        auto btn = std::make_unique<GUI::TouchButton>(icon, icon, icon);
+        GUI::TouchButton *btnPtr = btn.get();
 
-        float label_w = 0.0f, label_h = 0.0f;
-        C2D::GetTextSize(0.5f, &label_w, &label_h, label.c_str());
-        float tab_w = label_w + 12.0f;
+        float tab_w = btnPtr->IntrinsicWidth();
         if (tab_w < BUTTON_SIZE) tab_w = BUTTON_SIZE;
 
         UI::FlowLayout::Item item{btnPtr, tab_w};
-        if (right_group)
-            right_items_.push_back(item);
-        else
+        if (right_group) {
+            /* Keep the system close (X) button rightmost: insert tabs
+             * before it in the right group. */
+            bool inserted = false;
+            if (close_btn_) {
+                for (size_t i = 0; i < right_items_.size(); ++i) {
+                    if (right_items_[i].control == close_btn_) {
+                        right_items_.insert(right_items_.begin() + i, item);
+                        inserted = true;
+                        break;
+                    }
+                }
+            }
+            if (!inserted) {
+                right_items_.push_back(item);
+            }
+        } else {
             left_items_.push_back(item);
+        }
 
         Add(std::move(btn));
 
@@ -220,9 +238,7 @@ public:
 
         btnPtr->Click = [this, id]() { SetActiveTab(id); };
 
-        if (active_tab_.empty()) {
-            SetActiveTab(id);
-        }
+        SetActiveTab(id);
 
         UI::ScreenManager::Instance().WindowOpened();
         return tab;
@@ -231,7 +247,7 @@ public:
     void RemoveTab(const std::string &id) {
         for (size_t i = 0; i < tabs_.size();) {
             if (tabs_[i].id == id) {
-                TabButton *btn = tabs_[i].button;
+                GUI::TouchButton *btn = tabs_[i].button;
 
                 auto removeItem = [btn](std::vector<UI::FlowLayout::Item> &v) {
                     for (size_t j = 0; j < v.size();) {

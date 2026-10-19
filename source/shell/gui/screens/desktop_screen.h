@@ -2,6 +2,8 @@
 #define _3D_SHELL_DESKTOP_SCREEN_H
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <panel_app.h>
 #include <status_bar.h>
@@ -27,6 +29,9 @@ public:
     void OnKeyHeld(u32 k_held) override;
     void OnTouch(const touchPosition &touch, bool down) override;
 
+    static void RequestDrawer();
+    static bool ConsumeDrawerRequest();
+
 private:
     void OpenExplorer();
     void OpenDrawer();
@@ -39,6 +44,8 @@ private:
 
     std::unique_ptr<PanelApp> drawer_;
     std::unique_ptr<PanelApp> dying_panel_;
+
+    std::vector<std::string> pending_tab_removals_;
 };
 
 }

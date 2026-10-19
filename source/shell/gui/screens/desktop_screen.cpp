@@ -5,6 +5,7 @@
 #include "hbloader.h"
 #include "log.h"
 #include "net_loader_panel.h"
+#include "netloader.h"
 #include "settings_panel.h"
 #include "touch.h"
 
@@ -12,6 +13,8 @@
 #include "logger/logger.h"
 
 namespace GUI {
+
+static bool pending_drawer_request = false;
 
     static constexpr u32 DESKTOP_BG_DARK = C2D_Color32(39, 43, 58, 255);
     static constexpr u32 DESKTOP_BG_LIGHT = C2D_Color32(207, 216, 220, 255);
@@ -49,13 +52,20 @@ void DesktopScreen::OnFrame(u64 delta_time) {
     if (HBLoader::PendingExit())
         UI::ScreenManager::Instance().Exit();
 
+    if (ConsumeDrawerRequest())
+        OpenDrawer();
+
     if (drawer_)
         drawer_->OnFrame(delta_time);
-    for (const auto &tab : touch_bar_.Tabs()) {
-        if (tab.content) {
-            tab.content->OnFrame(delta_time);
-        }
+    if (auto content = touch_bar_.ActiveContent()) {
+        content->OnFrame(delta_time);
     }
+
+    for (const auto &id : pending_tab_removals_) {
+        if (touch_bar_.HasTab(id))
+            touch_bar_.RemoveTab(id);
+    }
+    pending_tab_removals_.clear();
 }
 
 void DesktopScreen::DrawTop() {
@@ -124,6 +134,16 @@ void DesktopScreen::OnKeyDown(u32 k_down) {
     }
 }
 
+void DesktopScreen::RequestDrawer() {
+    pending_drawer_request = true;
+}
+
+bool DesktopScreen::ConsumeDrawerRequest() {
+    bool v = pending_drawer_request;
+    pending_drawer_request = false;
+    return v;
+}
+
 void DesktopScreen::OpenExplorer() {
     auto explorer = std::make_unique<FileExplorerScreen>();
     if (R_SUCCEEDED(explorer->Init())) {
@@ -133,6 +153,7 @@ void DesktopScreen::OpenExplorer() {
 }
 
 void DesktopScreen::OpenDrawer() {
+    touch_bar_.SetHomeActive(true);
     auto drawer = std::make_unique<AppDrawerPanel>();
 
     drawer->LaunchScreen = [this](std::unique_ptr<UI::Screen> screen) {
@@ -154,13 +175,16 @@ void DesktopScreen::OpenDrawer() {
         }
 
         std::string tab_id = std::to_string(static_cast<int>(id));
+        C2D_Image tab_icon = icon_dir;
+        for (const auto &e : Apps::List()) {
+            if (e.id == id) { tab_icon = e.icon; break; }
+        }
         panel->Closed = [this, tab_id]() {
-            if (touch_bar_.HasTab(tab_id)) {
-                touch_bar_.RemoveTab(tab_id);
-            }
+            NetLoader::Cancel();
+            pending_tab_removals_.push_back(tab_id);
         };
 
-        touch_bar_.AddTab(tab_id, name, std::move(panel), true);
+        touch_bar_.AddTab(tab_id, name, tab_icon, std::move(panel), true);
     };
 
     drawer_ = std::move(drawer);
@@ -169,6 +193,7 @@ void DesktopScreen::OpenDrawer() {
 }
 
 void DesktopScreen::CloseDrawer() {
+    touch_bar_.SetHomeActive(false);
     if (drawer_) {
         dying_panel_ = std::move(drawer_);
         UI::ScreenManager::Instance().WindowClosed();

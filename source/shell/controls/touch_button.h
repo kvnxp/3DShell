@@ -21,8 +21,12 @@ public:
         : normal_(normal), dark_(dark), overlay_(overlay) {}
 
     void Draw() override {
+        if (active_) {
+            C2D::Rect(bounds_.x, bounds_.y, bounds_.w, bounds_.h, C2D_Color32(255, 255, 255, 150));
+        }
+
         C2D_Image img = cfg.dark_theme? dark_ : normal_;
-        if (active_ || pressed_)
+        if (pressed_)
             img = overlay_;
 
         float x = bounds_.x + ((bounds_.w - static_cast<float>(img.subtex->width)) / 2.0f);

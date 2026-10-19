@@ -32,6 +32,10 @@
 - When all checkboxes in a task file are done, move that file to `docs/task/completed/` (create the directory if it does not exist). The file keeps its original name.
 - Do not delete or rewrite previous task files; they are the project's work log.
 
+## Search
+
+- `tgrep` is available for fast trigram-indexed regex search over the codebase. Build/rebuild the index with `tgrep index` when needed; fall back to grep/glob if unavailable.
+
 ## Architecture (in progress)
 
 - `source/ui/` = reusable UI framework (WinForms-style; must not depend on app code).

@@ -5,7 +5,11 @@
 #include <locale>
 
 #include "archive_helper.h"
+#include "actions_panel.h"
+#include "app_drawer_panel.h"
+#include "apps.h"
 #include "c2d_helper.h"
+#include "desktop_screen.h"
 #include "colours.h"
 #include "config.h"
 #include "delete_screen.h"
@@ -43,10 +47,11 @@ namespace GUI {
     SetTopBackground(cfg.dark_theme? BLACK_BG : WHITE);
     SetBottomBackground(cfg.dark_theme? MENU_BAR_DARK : STATUS_BAR_LIGHT);
     touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
-    touch_bar_.SetHomeActive(true);
+    touch_bar_.SetHomeActive(false);
 
         touch_bar_.AddButton(TouchBar::ICON_HOME, false).Click = [this]() {
-            UI::ScreenManager::Instance().Pop();
+            // Open drawer overlay without closing the app (toggle)
+            if (drawer_) { CloseDrawer(); } else { OpenDrawer(); }
         };
 
         touch_bar_.AddButton(TouchBar::ICON_OPTIONS, false).Click = [this]() {
@@ -136,8 +141,15 @@ namespace GUI {
             SetBrowserStart();
         }
 
-        if (auto content = touch_bar_.ActiveContent()) {
-            content->OnFrame(delta_time);
+        // Update panels
+        if (drawer_) {
+            drawer_->OnFrame(delta_time);
+        }
+        if (settings_panel_) {
+            settings_panel_->OnFrame(delta_time);
+        }
+        if (actions_panel_) {
+            actions_panel_->OnFrame(delta_time);
         }
     }
 
@@ -464,13 +476,23 @@ namespace GUI {
         if (dialog_open_)
             return;
 
-        if (auto content = touch_bar_.ActiveContent()) {
-            content->Draw();
+        if (settings_panel_) {
+            settings_panel_->Draw();
+            return;
+        }
+
+        if (actions_panel_) {
+            actions_panel_->Draw();
             return;
         }
 
         DisplaySmdhPanel();
         DisplayActionGrid();
+
+        /* Drawer overlay is drawn on top of everything else. */
+        if (drawer_) {
+            drawer_->Draw();
+        }
     }
 
     void FileExplorerScreen::OnKeyHeld(u32 k_held) {
@@ -516,37 +538,128 @@ namespace GUI {
     }
 
     void FileExplorerScreen::PushOptions() {
-        touch_bar_.SetSection(TouchBar::SECTION_ACTIONS);
-        OpenDialog(std::make_unique<OptionsScreen>(this, &item_));
-    }
-
-    void FileExplorerScreen::PushSettings() {
-        if (touch_bar_.HasTab("settings")) {
-            touch_bar_.RemoveTab("settings");
+        // Close settings panel if open
+        if (settings_panel_) {
+            dying_panel_ = std::move(settings_panel_);
+            settings_panel_ = nullptr;
+            UI::ScreenManager::Instance().WindowClosed();
+        }
+        
+        // Toggle actions panel
+        if (actions_panel_) {
+            dying_panel_ = std::move(actions_panel_);
+            actions_panel_ = nullptr;
+            UI::ScreenManager::Instance().WindowClosed();
             touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
             return;
         }
 
-        auto panel = std::make_unique<GUI::SettingsPanel>();
-        panel->ListingChanged = [this]() {
+        actions_panel_ = std::make_unique<GUI::ActionsPanel>(this, &item_);
+        actions_panel_->Closed = [this]() {
+            dying_panel_ = std::move(actions_panel_);
+            actions_panel_ = nullptr;
+            UI::ScreenManager::Instance().WindowClosed();
+            touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
+        };
+        actions_panel_->ListingChanged = [this]() {
             RefreshListing();
             SetBrowserStart();
         };
-        panel->Closed = [this]() {
-            if (touch_bar_.HasTab("settings")) {
-                touch_bar_.RemoveTab("settings");
-            }
+        UI::ScreenManager::Instance().WindowOpened();
+        touch_bar_.SetSection(TouchBar::SECTION_ACTIONS);
+    }
+
+    void FileExplorerScreen::PushSettings() {
+        // Close any open dialog first
+        if (dialog_open_) {
+            UI::ScreenManager::Instance().Pop();
+            dialog_open_ = false;
+        }
+
+        if (settings_panel_) {
+            dying_panel_ = std::move(settings_panel_);
+            settings_panel_ = nullptr;
+            UI::ScreenManager::Instance().WindowClosed();
+            touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
+            return;
+        }
+
+        settings_panel_ = std::make_unique<GUI::SettingsPanel>();
+        settings_panel_->Closed = [this]() {
+            dying_panel_ = std::move(settings_panel_);
+            settings_panel_ = nullptr;
+            UI::ScreenManager::Instance().WindowClosed();
             touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
         };
-
+        settings_panel_->ListingChanged = [this]() {
+            RefreshListing();
+            SetBrowserStart();
+        };
         UI::ScreenManager::Instance().WindowOpened();
-        touch_bar_.AddTab("settings", "Settings", std::move(panel), true);
         touch_bar_.SetSection(TouchBar::SECTION_SETTINGS);
     }
 
+
+    void FileExplorerScreen::OpenDrawer() {
+        if (drawer_)
+            return;
+
+        // Close any open panels
+        if (settings_panel_) {
+            settings_panel_ = nullptr;
+        }
+        if (actions_panel_) {
+            actions_panel_ = nullptr;
+        }
+
+        touch_bar_.SetHomeActive(true);
+        auto drawer = std::make_unique<AppDrawerPanel>();
+
+        drawer->LaunchScreen = [this](std::unique_ptr<UI::Screen> screen) {
+            CloseDrawer();
+            if (screen) {
+                UI::ScreenManager::Instance().Push(std::move(screen));
+            }
+        };
+
+        drawer->SwitchPanel = [this](Apps::Id id, std::unique_ptr<GUI::PanelApp> panel) {
+            CloseDrawer();
+            // Panel apps are not supported in FileExplorer, just close the drawer
+        };
+
+        drawer_ = std::move(drawer);
+        UI::ScreenManager::Instance().WindowOpened();
+    }
+
+    void FileExplorerScreen::CloseDrawer() {
+        if (!drawer_)
+            return;
+
+        touch_bar_.SetHomeActive(false);
+        UI::ScreenManager::Instance().WindowClosed();
+        drawer_ = nullptr;
+    }
     void FileExplorerScreen::OnKeyDown(u32 k_down) {
         if (k_down & KEY_START) {
             UI::ScreenManager::Instance().Exit();
+            return;
+        }
+
+        // Forward to drawer if open
+        if (drawer_) {
+            drawer_->OnKeyDown(k_down);
+            return;
+        }
+
+        // Forward to actions panel if open
+        if (actions_panel_) {
+            actions_panel_->OnKeyDown(k_down);
+            return;
+        }
+
+        // Forward to settings panel if open
+        if (settings_panel_) {
+            settings_panel_->OnKeyDown(k_down);
             return;
         }
 
@@ -756,9 +869,17 @@ namespace GUI {
 
         bar_touching_ = false;
 
-        if (auto content = touch_bar_.ActiveContent()) {
+        if (drawer_) {
             if (down)
-                content->OnTouch(touch, down);
+                drawer_->OnTouch(touch, down);
+        }
+        else if (settings_panel_) {
+            if (down)
+                settings_panel_->OnTouch(touch, down);
+        }
+        else if (actions_panel_) {
+            if (down)
+                actions_panel_->OnTouch(touch, down);
         }
     }
 

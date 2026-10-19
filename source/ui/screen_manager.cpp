@@ -1,6 +1,8 @@
 #include "screen_manager.h"
-
+#include "task_manager_panel.h"
 #include "c2d_helper.h"
+
+#include <3ds.h>
 
 namespace UI {
 
@@ -42,6 +44,10 @@ void ScreenManager::Run(std::unique_ptr<Screen> root) {
         screen->DrawTop();
         C2D_SceneBegin(bottom_screen);
         screen->DrawBottom();
+        
+        // Draw task manager overlay if active
+        DrawTaskManagerOverlay();
+        
         C2D::Render();
 
         hidScanInput();
@@ -49,11 +55,20 @@ void ScreenManager::Run(std::unique_ptr<Screen> root) {
         u32 k_down = hidKeysDown();
         u32 k_held = hidKeysHeld();
 
+        // Handle SELECT key to toggle task manager (global hotkey)
+        if (k_down & KEY_SELECT) {
+            ToggleTaskManager();
+        }
+
         if (Current() == screen)
             screen->OnKeyHeld(k_held);
 
-        if (Current() == screen)
+        // Route key events to task manager if active, otherwise to current screen
+        if (task_manager_) {
+            HandleTaskManagerKey(k_down);
+        } else if (Current() == screen) {
             screen->OnKeyDown(k_down);
+        }
 
         touchPosition touch = last_touch_;
         bool touching = (k_held & KEY_TOUCH) != 0;
@@ -62,8 +77,12 @@ void ScreenManager::Run(std::unique_ptr<Screen> root) {
             last_touch_ = touch;
         }
 
-        if (Current() == screen)
+        // Route touch events to task manager if active, otherwise to current screen
+        if (task_manager_) {
+            HandleTaskManagerTouch(touch, touching);
+        } else if (Current() == screen) {
             screen->OnTouch(touch, touching);
+        }
 
         graveyard_.clear();
     }
@@ -97,4 +116,63 @@ bool ScreenManager::IsCurrent(const Screen *screen) const {
     return Current() == screen;
 }
 
+Screen *ScreenManager::GetScreenAt(size_t index) const {
+    if (index < stack_.size()) {
+        return stack_[index].get();
+    }
+    return nullptr;
 }
+
+void ScreenManager::CloseScreenAt(size_t index) {
+    if (index > 0 && index < stack_.size()) {
+        graveyard_.push_back(std::move(stack_[index]));
+        stack_.erase(stack_.begin() + index);
+    }
+}
+
+void ScreenManager::SwitchToScreenAt(size_t index) {
+    if (index > 0 && index < stack_.size()) {
+        // Move the screen to the top of the stack
+        auto screen = std::move(stack_[index]);
+        stack_.erase(stack_.begin() + index);
+        stack_.push_back(std::move(screen));
+    }
+}
+
+void ScreenManager::ToggleTaskManager() {
+    if (task_manager_) {
+        task_manager_->Close();
+        task_manager_.reset();
+        WindowClosed();
+    } else {
+        task_manager_ = std::make_unique<GUI::TaskManagerPanel>();
+        task_manager_->Closed = [this]() {
+            task_manager_.reset();
+            WindowClosed();
+        };
+        WindowOpened();
+    }
+}
+
+void ScreenManager::DrawTaskManagerOverlay() {
+    if (task_manager_) {
+        task_manager_->Draw();
+    }
+}
+
+void ScreenManager::HandleTaskManagerKey(u32 k_down) {
+    if (task_manager_) {
+        task_manager_->OnKeyDown(k_down);
+    }
+}
+
+void ScreenManager::HandleTaskManagerTouch(const touchPosition &touch, bool down) {
+    if (task_manager_) {
+        task_manager_->OnTouch(touch, down);
+    }
+}
+
+}
+
+UI::ScreenManager::ScreenManager() = default;
+UI::ScreenManager::~ScreenManager() = default;
