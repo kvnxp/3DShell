@@ -29,6 +29,7 @@
 
 - Check off items (`- [x]`) in the file **immediately** as each task is completed — not in a batch at the end.
 - Update the `Status` line to `completed` when every checkbox is done.
+- When all checkboxes in a task file are done, move that file to `docs/task/completed/` (create the directory if it does not exist). The file keeps its original name.
 - Do not delete or rewrite previous task files; they are the project's work log.
 
 ## Architecture (in progress)

@@ -11,6 +11,7 @@ namespace UI {
 class ContainerControl : public Control {
 public:
     void Add(std::unique_ptr<Control> control);
+    void Remove(Control *control);
     void Clear();
 
     void Draw() override;

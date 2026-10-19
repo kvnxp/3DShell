@@ -22,6 +22,7 @@
 #include <locale>
 #include <malloc.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -34,8 +35,8 @@
 #include "netloader.h"
 
 #define NL_RECV_CHUNK (16 * 1024) /* 3dslink ZLIB_CHUNK upper bound */
-#define NL_OUT_CHUNK (256 * 1024)
-#define NL_WRITE_CHUNK (512 * 1024)
+#define NL_OUT_CHUNK (64 * 1024)
+#define NL_WRITE_CHUNK (64 * 1024)
 
 /* Shared transfer state (worker thread -> UI panel). */
 static volatile bool nl_busy = false;
@@ -179,7 +180,7 @@ static bool NL_Transfer(int sock, Handle file, const char *name, u32 filelen, si
             break;
         }
 
-        if (ok && ((total - last_redraw > (256 * 1024)) || (ret == Z_STREAM_END))) {
+        if (ok && ((total - last_redraw > (64 * 1024)) || (ret == Z_STREAM_END))) {
             u64 now = osGetTime();
             u64 elapsed = (now > last_redraw_time)? (now - last_redraw_time) : 1;
             u32 speed_kb = (u32)((total - last_redraw) * 1000 / elapsed / 1024);

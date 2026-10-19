@@ -3,6 +3,10 @@
 
 #include <3ds.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <config.h>
 #include <fs.h>
 #include <textures.h>
@@ -12,11 +16,30 @@
 #include <screen_manager.h>
 
 #include "controls/button.h"
+#include "panel_app.h"
 #include "touch_button.h"
 #include <c2d_helper.h>
 #include <colours.h>
 
 namespace GUI {
+
+/* Tab button: a text button that can show an active (pressed) state. */
+class TabButton : public UI::Button {
+public:
+    TabButton(const std::string &text, u32 background, u32 text_colour)
+        : UI::Button(text, UI::Rect{}, background, text_colour) {}
+
+    void SetActive(bool active) { active_ = active; }
+
+    void Draw() override {
+        UI::Button::Draw();
+        if (active_)
+            C2D::Rect(bounds_.x, bounds_.y, bounds_.w, bounds_.h, C2D_Color32(255, 255, 255, 70));
+    }
+
+private:
+    bool active_ = false;
+};
 
 /* Bottom screen chrome: background bar + icon buttons laid out in two
  * groups. Screens add the buttons they need with AddButton(): the LEFT
@@ -25,6 +48,14 @@ namespace GUI {
  * re-packs. Each button fires its own Click event on release. */
 class TouchBar : public UI::ContainerControl {
 public:
+    struct Tab {
+        std::string id;
+        std::string label;
+        std::unique_ptr<GUI::PanelApp> content;
+        TabButton *button = nullptr;
+        bool right_group = false;
+    };
+
     enum TouchBarIcon {
         ICON_HOME,
         ICON_FILES,
@@ -88,6 +119,16 @@ public:
             left_items_.push_back(item);
 
         Add(std::move(button));
+
+        switch (icon) {
+            case ICON_HOME:     home_ = &ref;     break;
+            case ICON_OPTIONS:  options_ = &ref;  break;
+            case ICON_SETTINGS: settings_ = &ref; break;
+            case ICON_SD:       sd_ = &ref;      break;
+            case ICON_NAND:     secure_ = &ref;   break;
+            default: break;
+        }
+
         return ref;
     }
 
@@ -104,6 +145,7 @@ public:
             left_items_.push_back(item);
 
         Add(std::move(button));
+        close_btn_ = &ref;
         return ref;
     }
 
@@ -111,7 +153,7 @@ public:
         C2D::Rect(bounds_.x, bounds_.y, bounds_.w, bounds_.h, cfg.dark_theme? STATUS_BAR_DARK : MENU_BAR_LIGHT);
 
         if (home_)
-            home_->SetActive(section_ == SECTION_BROWSER);
+            home_->SetActive(home_active_);
         if (options_)
             options_->SetActive(section_ == SECTION_ACTIONS);
         if (settings_)
@@ -125,10 +167,17 @@ public:
             secure_->SetActive(archive == nand_archive);
         }
 
+        for (auto &t : tabs_) {
+            if (t.button) {
+                t.button->SetActive(t.id == active_tab_);
+            }
+        }
+
         /* The close X answers to the window manager, not to each screen:
          * it exists while any window (fullscreen app or panel app) is open. */
-        if (close_btn_)
-            close_btn_->SetVisible(UI::ScreenManager::Instance().HasWindow());
+        if (close_btn_) {
+            close_btn_->SetVisible(close_visible_ || (close_use_wm_ && UI::ScreenManager::Instance().HasWindow()) || !active_tab_.empty());
+        }
 
         Reflow();
 
@@ -136,6 +185,111 @@ public:
     }
 
     void SetSection(Section section) { section_ = section; }
+    void SetHomeActive(bool active) { home_active_ = active; }
+    void SetCloseVisible(bool visible) { close_visible_ = visible; }
+    void SetCloseUseWM(bool use) { close_use_wm_ = use; }
+
+    /* Tabs: buttons that show an associated PanelApp content below the bar. */
+    Tab &AddTab(const std::string &id, const std::string &label,
+                std::unique_ptr<GUI::PanelApp> content, bool right_group) {
+        for (auto &t : tabs_) {
+            if (t.id == id) {
+                return t;
+            }
+        }
+
+        auto btn = std::make_unique<TabButton>(
+            label, cfg.dark_theme? STATUS_BAR_DARK : MENU_BAR_LIGHT, WHITE);
+        TabButton *btnPtr = btn.get();
+
+        float label_w = 0.0f, label_h = 0.0f;
+        C2D::GetTextSize(0.5f, &label_w, &label_h, label.c_str());
+        float tab_w = label_w + 12.0f;
+        if (tab_w < BUTTON_SIZE) tab_w = BUTTON_SIZE;
+
+        UI::FlowLayout::Item item{btnPtr, tab_w};
+        if (right_group)
+            right_items_.push_back(item);
+        else
+            left_items_.push_back(item);
+
+        Add(std::move(btn));
+
+        tabs_.push_back(Tab{id, label, std::move(content), btnPtr, right_group});
+        Tab &tab = tabs_.back();
+
+        btnPtr->Click = [this, id]() { SetActiveTab(id); };
+
+        if (active_tab_.empty()) {
+            SetActiveTab(id);
+        }
+
+        UI::ScreenManager::Instance().WindowOpened();
+        return tab;
+    }
+
+    void RemoveTab(const std::string &id) {
+        for (size_t i = 0; i < tabs_.size();) {
+            if (tabs_[i].id == id) {
+                TabButton *btn = tabs_[i].button;
+
+                auto removeItem = [btn](std::vector<UI::FlowLayout::Item> &v) {
+                    for (size_t j = 0; j < v.size();) {
+                        if (v[j].control == btn) {
+                            v.erase(v.begin() + j);
+                        } else {
+                            ++j;
+                        }
+                    }
+                };
+                removeItem(left_items_);
+                removeItem(right_items_);
+
+                Remove(btn);
+
+                if (active_tab_ == id) {
+                    active_tab_.clear();
+                    for (auto &t : tabs_) {
+                        if (t.id != id) {
+                            SetActiveTab(t.id);
+                            break;
+                        }
+                    }
+                }
+
+                tabs_.erase(tabs_.begin() + i);
+                UI::ScreenManager::Instance().WindowClosed();
+            } else {
+                ++i;
+            }
+        }
+    }
+
+    void SetActiveTab(const std::string &id) {
+        active_tab_ = id;
+        for (auto &t : tabs_) {
+            if (t.button) {
+                t.button->SetActive(t.id == id);
+            }
+        }
+    }
+
+    const std::string &ActiveTabId() const { return active_tab_; }
+
+    GUI::PanelApp *ActiveContent() const {
+        for (const auto &t : tabs_) {
+            if (t.id == active_tab_) {
+                return t.content.get();
+            }
+        }
+        return nullptr;
+    }
+
+    const std::vector<Tab> &Tabs() const { return tabs_; }
+    bool HasTab(const std::string &id) const {
+        for (const auto &t : tabs_) if (t.id == id) return true;
+        return false;
+    }
 
 private:
     void Reflow() {
@@ -149,6 +303,9 @@ private:
     }
 
     Section section_ = SECTION_NONE;
+    bool home_active_ = false;
+    bool close_visible_ = false;
+    bool close_use_wm_ = true;
     UI::Button *close_btn_ = nullptr;
     TouchButton *home_ = nullptr;
     TouchButton *options_ = nullptr;
@@ -157,6 +314,8 @@ private:
     TouchButton *secure_ = nullptr;
     std::vector<UI::FlowLayout::Item> left_items_;
     std::vector<UI::FlowLayout::Item> right_items_;
+    std::vector<Tab> tabs_;
+    std::string active_tab_;
     static constexpr float BUTTON_SIZE = 20.0f;
 };
 

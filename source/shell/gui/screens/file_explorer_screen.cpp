@@ -40,9 +40,10 @@ namespace GUI {
 
     FileExplorerScreen::FileExplorerScreen()
         : scroll_bar_(UI::Rect{395.0f, 40.0f, 4.0f, 200.0f}, BAR_COLOUR, TITLE_COLOUR) {
-        SetTopBackground(cfg.dark_theme? BLACK_BG : WHITE);
-        SetBottomBackground(cfg.dark_theme? MENU_BAR_DARK : STATUS_BAR_LIGHT);
-        touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
+    SetTopBackground(cfg.dark_theme? BLACK_BG : WHITE);
+    SetBottomBackground(cfg.dark_theme? MENU_BAR_DARK : STATUS_BAR_LIGHT);
+    touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
+    touch_bar_.SetHomeActive(true);
 
         touch_bar_.AddButton(TouchBar::ICON_HOME, false).Click = [this]() {
             UI::ScreenManager::Instance().Pop();
@@ -133,6 +134,10 @@ namespace GUI {
             if (pushed_filter_ != cfg.filter)
                 RefreshListing();
             SetBrowserStart();
+        }
+
+        if (auto content = touch_bar_.ActiveContent()) {
+            content->OnFrame(delta_time);
         }
     }
 
@@ -459,8 +464,8 @@ namespace GUI {
         if (dialog_open_)
             return;
 
-        if (settings_panel_) {
-            settings_panel_->Draw();
+        if (auto content = touch_bar_.ActiveContent()) {
+            content->Draw();
             return;
         }
 
@@ -516,24 +521,27 @@ namespace GUI {
     }
 
     void FileExplorerScreen::PushSettings() {
-        if (settings_panel_) {
-            dying_panel_ = std::move(settings_panel_);
-            settings_panel_ = nullptr;
-            UI::ScreenManager::Instance().WindowClosed();
+        if (touch_bar_.HasTab("settings")) {
+            touch_bar_.RemoveTab("settings");
+            touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
             return;
         }
 
-        settings_panel_ = std::make_unique<GUI::SettingsPanel>();
-        settings_panel_->Closed = [this]() {
-            dying_panel_ = std::move(settings_panel_);
-            settings_panel_ = nullptr;
-            UI::ScreenManager::Instance().WindowClosed();
-        };
-        settings_panel_->ListingChanged = [this]() {
+        auto panel = std::make_unique<GUI::SettingsPanel>();
+        panel->ListingChanged = [this]() {
             RefreshListing();
             SetBrowserStart();
         };
+        panel->Closed = [this]() {
+            if (touch_bar_.HasTab("settings")) {
+                touch_bar_.RemoveTab("settings");
+            }
+            touch_bar_.SetSection(TouchBar::SECTION_BROWSER);
+        };
+
         UI::ScreenManager::Instance().WindowOpened();
+        touch_bar_.AddTab("settings", "Settings", std::move(panel), true);
+        touch_bar_.SetSection(TouchBar::SECTION_SETTINGS);
     }
 
     void FileExplorerScreen::OnKeyDown(u32 k_down) {
@@ -748,9 +756,9 @@ namespace GUI {
 
         bar_touching_ = false;
 
-        if (settings_panel_) {
+        if (auto content = touch_bar_.ActiveContent()) {
             if (down)
-                settings_panel_->OnTouch(touch, down);
+                content->OnTouch(touch, down);
         }
     }
 

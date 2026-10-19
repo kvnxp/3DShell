@@ -28,25 +28,16 @@ public:
     void OnTouch(const touchPosition &touch, bool down) override;
 
 private:
-    enum class PanelType {
-        None,
-        Drawer,
-        Settings,
-        NetLoader,
-        Custom
-    };
-
     void OpenExplorer();
-    void TogglePanel(PanelType type, std::unique_ptr<PanelApp> app);
-    void ClosePanel();
+    void OpenDrawer();
+    void CloseDrawer();
 
     StatusBar status_bar_;
     TouchBar touch_bar_;
     bool bar_touching_ = false;
     bool panel_touching_ = false;
 
-    std::unique_ptr<PanelApp> panel_app_;
-    PanelType panel_type_ = PanelType::None;
+    std::unique_ptr<PanelApp> drawer_;
     std::unique_ptr<PanelApp> dying_panel_;
 };
 

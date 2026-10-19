@@ -12,4 +12,5 @@
 - [x] Phase 2: debug command server (UDP 6000) based on NetLoginServer shape: Poll() from ScreenManager per frame, reply to command source
 - [x] Phase 2: commands `ping`, `windows` (needs `UI::Screen::Name()`), `touch` (last touch state), `cfg` snapshot
 - [x] Phase 2: logger.ts v2: both channels (5000 listen + command send to 6000)
+- [x] Fix: desktop touch-bar X button now hidden when no window/panel is open (close_btn_ was never assigned in AddTextButton)
 - [ ] Validate on hardware: logs flow, `windows` answers WM state (X-button debug)

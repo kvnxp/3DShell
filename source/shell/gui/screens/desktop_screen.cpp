@@ -20,38 +20,24 @@ DesktopScreen::DesktopScreen() {
     SetTopBackground(cfg.dark_theme? DESKTOP_BG_DARK : DESKTOP_BG_LIGHT);
     SetBottomBackground(cfg.dark_theme? DESKTOP_BG_DARK : DESKTOP_BG_LIGHT);
 
-    touch_bar_.SetSection(TouchBar::SECTION_NONE);
+    touch_bar_.SetHomeActive(false);
 
     touch_bar_.AddButton(TouchBar::ICON_HOME, false).Click = [this]() {
-        auto drawer = std::make_unique<AppDrawerPanel>();
-
-        /* Fullscreen apps push onto the screen stack; panel apps replace
-         * the current bottom panel. */
-        drawer->LaunchScreen = [this](std::unique_ptr<UI::Screen> screen) {
-            ClosePanel();
-            if (screen)
-                UI::ScreenManager::Instance().Push(std::move(screen));
-        };
-
-        drawer->SwitchPanel = [this](Apps::Id id, std::unique_ptr<GUI::PanelApp> panel) {
-            PanelType type = PanelType::Custom;
-            if (id == Apps::AppSettings)
-                type = PanelType::Settings;
-            else if (id == Apps::AppNetLoader)
-                type = PanelType::NetLoader;
-            TogglePanel(type, std::move(panel));
-        };
-
-        TogglePanel(PanelType::Drawer, std::move(drawer));
+        if (drawer_) {
+            CloseDrawer();
+        } else {
+            OpenDrawer();
+        }
     };
 
-    /* The right side of the bar is reserved space for the active app's
-     * own actions. Settings and NetLoader are reached from the drawer. */
-
-    /* Window close X (Windows Mobile style): visible while a panel app
-     * is open; closes it and returns to the empty desktop. */
+    /* Window close X (Windows Mobile style): closes the drawer or the
+     * active tab. */
     touch_bar_.AddTextButton("X", ERROR_COLOUR, true).Click = [this]() {
-        ClosePanel();
+        if (drawer_) {
+            CloseDrawer();
+        } else if (touch_bar_.ActiveContent()) {
+            touch_bar_.RemoveTab(touch_bar_.ActiveTabId());
+        }
     };
 
     NetworkLogger::PrintfTagged("SHELL", "desktop: status bar + touch bar ready");
@@ -63,8 +49,13 @@ void DesktopScreen::OnFrame(u64 delta_time) {
     if (HBLoader::PendingExit())
         UI::ScreenManager::Instance().Exit();
 
-    if (panel_app_)
-        panel_app_->OnFrame(delta_time);
+    if (drawer_)
+        drawer_->OnFrame(delta_time);
+    for (const auto &tab : touch_bar_.Tabs()) {
+        if (tab.content) {
+            tab.content->OnFrame(delta_time);
+        }
+    }
 }
 
 void DesktopScreen::DrawTop() {
@@ -78,10 +69,16 @@ void DesktopScreen::DrawTop() {
 }
 
 void DesktopScreen::DrawBottom() {
+    touch_bar_.SetHomeActive(drawer_ != nullptr);
+    touch_bar_.SetCloseUseWM(false);
+    touch_bar_.SetCloseVisible(drawer_ != nullptr || !touch_bar_.Tabs().empty());
     touch_bar_.Draw();
 
-    if (panel_app_)
-        panel_app_->Draw();
+    if (drawer_) {
+        drawer_->Draw();
+    } else if (auto content = touch_bar_.ActiveContent()) {
+        content->Draw();
+    }
 }
 
 void DesktopScreen::OnKeyHeld(u32 k_held) {
@@ -105,8 +102,11 @@ void DesktopScreen::OnTouch(const touchPosition &touch, bool down) {
     bool in_panel = down? (touch.py >= 20) : panel_touching_;
 
     if (in_panel) {
-        if (panel_app_)
-            panel_app_->OnTouch(touch, down);
+        if (drawer_) {
+            drawer_->OnTouch(touch, down);
+        } else if (auto content = touch_bar_.ActiveContent()) {
+            content->OnTouch(touch, down);
+        }
         panel_touching_ = down;
     }
 }
@@ -117,42 +117,62 @@ void DesktopScreen::OnKeyDown(u32 k_down) {
         return;
     }
 
-    if (panel_app_)
-        panel_app_->OnKeyDown(k_down);
+    if (drawer_) {
+        drawer_->OnKeyDown(k_down);
+    } else if (auto content = touch_bar_.ActiveContent()) {
+        content->OnKeyDown(k_down);
+    }
 }
 
 void DesktopScreen::OpenExplorer() {
     auto explorer = std::make_unique<FileExplorerScreen>();
     if (R_SUCCEEDED(explorer->Init())) {
-        ClosePanel();
+        CloseDrawer();
         UI::ScreenManager::Instance().Push(std::move(explorer));
     }
 }
 
-void DesktopScreen::TogglePanel(PanelType type, std::unique_ptr<PanelApp> app) {
-    if (panel_type_ == type) {
-        ClosePanel();
-        return;
-    }
+void DesktopScreen::OpenDrawer() {
+    auto drawer = std::make_unique<AppDrawerPanel>();
 
-    ClosePanel();
-
-    app->Closed = [this]() {
-        ClosePanel();
+    drawer->LaunchScreen = [this](std::unique_ptr<UI::Screen> screen) {
+        CloseDrawer();
+        if (screen) {
+            UI::ScreenManager::Instance().Push(std::move(screen));
+        }
     };
 
-    panel_app_ = std::move(app);
-    panel_type_ = type;
+    drawer->SwitchPanel = [this](Apps::Id id, std::unique_ptr<GUI::PanelApp> panel) {
+        CloseDrawer();
+
+        std::string name = "App";
+        for (const auto &entry : Apps::List()) {
+            if (entry.id == id) {
+                name = entry.name;
+                break;
+            }
+        }
+
+        std::string tab_id = std::to_string(static_cast<int>(id));
+        panel->Closed = [this, tab_id]() {
+            if (touch_bar_.HasTab(tab_id)) {
+                touch_bar_.RemoveTab(tab_id);
+            }
+        };
+
+        touch_bar_.AddTab(tab_id, name, std::move(panel), true);
+    };
+
+    drawer_ = std::move(drawer);
     UI::ScreenManager::Instance().WindowOpened();
-    NetworkLogger::PrintfTagged("WM", "panel open type=%d windows=%d", (int)type, UI::ScreenManager::Instance().WindowCount());
+    NetworkLogger::PrintfTagged("WM", "drawer open windows=%d", UI::ScreenManager::Instance().WindowCount());
 }
 
-void DesktopScreen::ClosePanel() {
-    if (panel_app_) {
-        dying_panel_ = std::move(panel_app_);
-        panel_type_ = PanelType::None;
+void DesktopScreen::CloseDrawer() {
+    if (drawer_) {
+        dying_panel_ = std::move(drawer_);
         UI::ScreenManager::Instance().WindowClosed();
-        NetworkLogger::PrintfTagged("WM", "panel closed windows=%d", UI::ScreenManager::Instance().WindowCount());
+        NetworkLogger::PrintfTagged("WM", "drawer closed windows=%d", UI::ScreenManager::Instance().WindowCount());
     }
 }
 

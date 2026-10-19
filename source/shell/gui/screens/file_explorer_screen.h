@@ -66,7 +66,7 @@ private:
     TouchBar touch_bar_;
 
     /* Settings panel (rendered over the bottom content, toggled). */
-    std::unique_ptr<GUI::SettingsPanel> settings_panel_;
+    /* settings panel now lives as a touch-bar tab */
     std::unique_ptr<GUI::SettingsPanel> dying_panel_;
 
     int start_ = 0;
