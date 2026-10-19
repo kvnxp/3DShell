@@ -99,11 +99,6 @@ void ActionsPanel::OnKeyHeld(u32 k_held) {
 }
 
 void ActionsPanel::OnKeyDown(u32 k_down) {
-    if (k_down & KEY_START) {
-        UI::ScreenManager::Instance().Exit();
-        return;
-    }
-
     // Navigation
     int row = selection_ / 3;
     int col = selection_ % 3;

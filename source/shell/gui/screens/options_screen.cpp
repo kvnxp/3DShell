@@ -80,11 +80,6 @@ void OptionsScreen::DrawBottom() {
 }
 
 void OptionsScreen::OnKeyDown(u32 k_down) {
-    if (k_down & KEY_START) {
-        UI::ScreenManager::Instance().Exit();
-        return;
-    }
-
     if (k_down & KEY_RIGHT)
         row_++;
     else if (k_down & KEY_LEFT)

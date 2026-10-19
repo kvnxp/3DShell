@@ -53,11 +53,6 @@ void DeleteScreen::DrawBottom() {
 }
 
 void DeleteScreen::OnKeyDown(u32 k_down) {
-    if (k_down & KEY_START) {
-        UI::ScreenManager::Instance().Exit();
-        return;
-    }
-
     if (k_down & KEY_RIGHT)
         selection_++;
     else if (k_down & KEY_LEFT)

@@ -149,11 +149,6 @@ void SettingsPanel::OnKeyHeld(u32 k_held) {
 }
 
 void SettingsPanel::OnKeyDown(u32 k_down) {
-    if (k_down & KEY_START) {
-        UI::ScreenManager::Instance().Exit();
-        return;
-    }
-
     switch (page_) {
         case GENERAL_SETTINGS:
             ControlGeneral(k_down);

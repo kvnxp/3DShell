@@ -64,11 +64,6 @@ void TextReaderScreen::OnKeyHeld(u32 k_held) {
 }
 
 void TextReaderScreen::OnKeyDown(u32 k_down) {
-    if (k_down & KEY_START) {
-        UI::ScreenManager::Instance().Exit();
-        return;
-    }
-
     Notepad::Control(k_down, k_held_);
 }
 

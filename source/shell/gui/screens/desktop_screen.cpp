@@ -122,11 +122,6 @@ void DesktopScreen::OnTouch(const touchPosition &touch, bool down) {
 }
 
 void DesktopScreen::OnKeyDown(u32 k_down) {
-    if (k_down & KEY_START) {
-        UI::ScreenManager::Instance().Exit();
-        return;
-    }
-
     if (drawer_) {
         drawer_->OnKeyDown(k_down);
     } else if (auto content = touch_bar_.ActiveContent()) {

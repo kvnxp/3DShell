@@ -71,11 +71,6 @@ void NetLoaderPanel::OnTouch(const touchPosition &touch, bool down) {
 }
 
 void NetLoaderPanel::OnKeyDown(u32 k_down) {
-    if (k_down & KEY_START) {
-        UI::ScreenManager::Instance().Exit();
-        return;
-    }
-
     /* B backs out: cancels the wait; an in-flight transfer aborts at the
      * next chunk boundary. */
     if (k_down & KEY_B)

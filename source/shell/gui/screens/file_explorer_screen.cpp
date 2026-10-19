@@ -640,11 +640,6 @@ namespace GUI {
         drawer_ = nullptr;
     }
     void FileExplorerScreen::OnKeyDown(u32 k_down) {
-        if (k_down & KEY_START) {
-            UI::ScreenManager::Instance().Exit();
-            return;
-        }
-
         // Forward to drawer if open
         if (drawer_) {
             drawer_->OnKeyDown(k_down);
