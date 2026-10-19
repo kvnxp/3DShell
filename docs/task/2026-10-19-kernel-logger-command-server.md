@@ -14,9 +14,8 @@
 - [x] Phase 2: logger.ts v2: both channels (5000 listen + command send to 6000)
 - [x] Fix: desktop touch-bar X button now hidden when no window/panel is open (close_btn_ was never assigned in AddTextButton)
 - [x] Implement Task Manager overlay panel (SELECT to open/close)
-  - [x] Created TaskManagerPanel class
-  - [x] Lists open applications from desktop tabs
-  - [x] Allows closing apps with A button
-  - [x] Close with B button
+  - [x] Created TaskManagerPanel class (global overlay in ScreenManager)
+  - [x] Lists open applications from the screen stack
+  - [x] A switches to app, X closes app, B closes task manager
   - [x] Integrates with Windows Manager (WindowOpened/WindowClosed)
 - [ ] Validate on hardware: logs flow, `windows` answers WM state (X-button debug)
