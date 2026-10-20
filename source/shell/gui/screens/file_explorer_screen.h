@@ -11,12 +11,14 @@
 #include "fs.h"
 #include "screen.h"
 #include "screen_manager.h"
+#include "textures.h"
 
 namespace GUI {
 
 class FileExplorerScreen : public UI::Screen {
 public:
     const char *Name() const override { return "explorer"; }
+    const C2D_Image *Icon(bool dark_theme) const override { return dark_theme ? &icon_dir_dark : &icon_dir; }
     FileExplorerScreen();
 
     ~FileExplorerScreen() override;

@@ -15,6 +15,14 @@ typedef enum {
     NOTEPAD_EDIT = 1
 } NotepadMode;
 
+/* Requests from Control() that the owning screen has to handle, because
+ * saving a blank document or leaving with unsaved changes needs UI. */
+typedef enum {
+    NOTEPAD_ACTION_NONE = 0,
+    NOTEPAD_ACTION_SAVE,
+    NOTEPAD_ACTION_CLOSE
+} NotepadAction;
+
 typedef struct {
     std::string filename;
     std::string filepath;
@@ -35,7 +43,11 @@ namespace Notepad {
     void Close(void);
     bool IsOpen(void);
     bool IsModified(void);
+    bool IsNewDocument(void);
+    /* Writes to the document's own path. Fails for a blank document. */
     bool Save(void);
+    /* Writes to a new path and makes it the document's path. */
+    bool SaveTo(const std::string &path);
 
     void InsertChar(char c);
     void InsertString(const std::string &s);
@@ -46,7 +58,7 @@ namespace Notepad {
 
     void DisplayTop(void);
     void DisplayBottom(void);
-    void Control(u32 kDown, u32 kHeld);
+    NotepadAction Control(u32 kDown, u32 kHeld);
 }
 
 #endif

@@ -33,6 +33,9 @@ public:
     /* Window-manager identity, used by the debug channel. */
     virtual const char *Name() const { return "screen"; }
 
+    /* Icon shown next to this window in the Task Manager; nullptr means none. */
+    virtual const C2D_Image *Icon(bool dark_theme) const { return nullptr; }
+
     u32 BottomBackground() const { return bottom_background_; }
     void SetBottomBackground(u32 colour) { bottom_background_ = colour; }
 

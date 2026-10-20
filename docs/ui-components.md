@@ -44,6 +44,8 @@ Frame order inside `UI::ScreenManager::Run()` (every iteration):
 | `UI::ScrollBar` | Vertical track/thumb; `SetRange(item_count, page_size)`, `Value()` = first visible row, finger drag. |
 | `UI::Dialog` | Panel with title bar; base for popups (derives from `ContainerControl`). |
 | `UI::FlowLayout` | Horizontal packer: places visible controls left-to-right from an anchor or right-to-right ending at an anchor (right-aligned groups); invisible controls are skipped, so groups re-pack when one is hidden. |
+| `UI::MessageBox` | Modal prompt overlay: title, text, a row of buttons, D-pad focus, A/B, and touch. Ignores input until the finger is released once. Result is read with `Done()` / `Result()`. |
+| `UI::ComboBox` | Dropdown. Opens a list above the box (drop-up). `Step()` wraps, `Changed` fires on selection. |
 
 ## 3. Shared chrome (application controls)
 
@@ -85,6 +87,24 @@ tree — no hard-coded zones.
 `TouchBar::SetSection()` controls which button shows its overlay variant;
 screens wire the `Click` events to their own actions (the browser pushes
 dialogs / switches archives, the text reader closes the editor).
+
+### 3.3 Folder list — `GUI::FolderView` (gfx0, D-pad only)
+
+Class: `source/shell/controls/folder_view.h`. A `UI::Control` that lists the
+folders (and optionally files matching an extension filter) of a directory,
+with a 4 px `UI::ScrollBar` on the right. It is drawn on the top screen and
+navigated with UP/DOWN (selection), A (open folder or choose file), and B
+(`GoParent()`, returns `false` at the root so the host can cancel).
+
+| Member | Purpose |
+|---|---|
+| `Navigate(path)` / `GoParent()` / `Cwd()` | Change or read the current folder. `Navigate` returns `false` when the folder does not exist and fires `Failed` |
+| `SetShowFiles(bool)` / `SetExtensions(list)` | Show files and filter them by extension (empty list = all files) |
+| `Changed()` / `FileChosen(name)` / `Failed(msg)` | Callbacks for the host |
+
+The list has no touch selection: the touch screen (gfx1) is occupied by the
+host's own controls. Used by `FileDialogScreen`; `FileExplorerScreen` still
+has its own list (migration pending).
 
 ## 4. Screens
 
@@ -191,7 +211,7 @@ browser shows through):
 | Image in NINTENDO_SCREENSHOT dimension (432x528) | gfx0 (16,16) + gfx1 (56,272) | same |
 | Image in DUAL_SCREEN dimension (400x480/482) | gfx0 (0,0) + gfx1 (40,240) | same |
 | Properties popup (X): dialog texture, Name, Width, Height, OK | gfx1, centered | `ImageViewerScreen::DrawImageBottom()` |
-| Zoom/pan controls | — | `ImageViewerScreen::Control()`: D-Pad/C-Stick zoom, C-Pad pan, SELECT resets, D-Left/Right or L/R cycles to the previous/next image in the directory |
+| Zoom/pan controls | — | `ImageViewerScreen::Control()`: D-Pad/C-Stick zoom, L+Y zoom in, L+B zoom out (held), C-Pad pan, L+X resets zoom, D-Left/Right cycles to the previous/next image (repeats while held) or R for next |
 
 ### 4.7 TextReaderScreen (pushed by the browser)
 
@@ -211,9 +231,11 @@ gfx1 — `TextReaderScreen::DrawBottom()`:
 | Element | Position | Drawn by |
 |---|---|---|
 | Touch bar (no active section) | y = 0..20 | `touch_bar_.Draw()` — `GUI::TouchBar`, `SECTION_NONE` |
-| **View mode**: title "Text Reader", key hints (A:Edit X:Save B:Back Pad:Move), buttons Edit/Save/Back, `* unsaved` marker | (10, 30) onwards | `Notepad::DisplayBottom()` |
+| **View mode**: title "Notepad", key hints (A:Edit X:Save B:Back Pad:Move), buttons Edit/Save/Back, `* unsaved` marker | (10, 30) onwards | `Notepad::DisplayBottom()` |
 | **Edit mode**: `VirtualKeyboard::Display()` on-screen keyboard | lower area | `VirtualKeyboard::Display()` (`source/shell/osk/virtual_keyboard.cpp`) |
-| Touch bar Home button closes the editor | y = 0..20, left zone | `TextReaderScreen` wires `touch_bar_.Home().Click` → `Notepad::Close()` |
+| Touch bar Home button, X and B leave through `GUI::NotepadSession::RequestClose()` (shows the unsaved prompt when modified) | y = 0..20, left zone | `TextReaderScreen` wires `touch_bar_.Home().Click` → `session_.RequestClose()` |
+| Unsaved prompt / Replace prompt (`UI::MessageBox`, overlay) | centered | `Prompt::Create()` (`source/shell/controls/screen_prompt.h`) |
+| Save dialog for blank documents (`FileDialogScreen`, pushed) | gfx0 folder list (`FolderView`, D-pad) + gfx1 Name / Type / buttons | `GUI::NotepadSession::Save()` |
 
 ### 4.8 Progress overlay (any screen, transfer-time only)
 

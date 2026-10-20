@@ -22,8 +22,8 @@ On top of the file management features, it also acts as your homebrew menu:
 Current features:
 --------------------------------------------------------------------------------
 - Multi-app desktop: apps open as tabs in the touch bar. The app drawer launches File Explorer, Notepad, NetLoader and Settings.
-- Task Manager: press SELECT at any time to list the open apps. A switches to the selected app, X closes it, and B returns.
-- Notepad (app drawer): opens a blank document. Save asks for a file name, and Open goes to File Explorer to pick a text file. See [docs/TEXT_EDITOR.md](docs/TEXT_EDITOR.md).
+- Task Manager: press SELECT at any time to list the open apps, each with its icon. A switches to the selected app, X closes it, and B returns.
+- Notepad (app drawer): opens a blank document. Save on a blank document opens a file dialog (name and file type), and Save on an existing file writes in place. Overwriting asks first, and leaving with unsaved changes asks Save, Discard or Cancel. Open goes to File Explorer to pick a text file. See [docs/TEXT_EDITOR.md](docs/TEXT_EDITOR.md).
 - START no longer closes the app.
 - Storage bar (at the very top, just beneath the current working directory).
 - Precise battery percentage using mcu::hwc.
