@@ -3,19 +3,21 @@
 
 #include "gui.h"
 #include "notepad.h"
+#include "notepad_session.h"
 
 #include <status_bar.h>
 #include <touch_bar.h>
 #include "screen.h"
 #include "screen_manager.h"
+#include "textures.h"
 
 namespace GUI {
 
-/* Notepad as a fullscreen app: starts a blank document and can open
- * text files through File Explorer. */
+/* Notepad as a fullscreen app: starts a blank document. */
 class NotepadScreen : public UI::Screen {
 public:
     const char *Name() const override { return "notepad"; }
+    const C2D_Image *Icon(bool) const override { return &icon_notepad; }
     NotepadScreen();
 
     void OnFrame(u64 delta_time) override;
@@ -26,10 +28,9 @@ public:
     void OnTouch(const touchPosition &touch, bool down) override;
 
 private:
-    void OpenFile();
-
     u32 k_held_ = 0;
     bool bar_touching_ = false;
+    NotepadSession session_;
     StatusBar status_bar_;
     TouchBar touch_bar_;
 };

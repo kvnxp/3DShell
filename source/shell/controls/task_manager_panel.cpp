@@ -24,6 +24,7 @@ void TaskManagerPanel::RefreshApps() {
             info.id = std::to_string(i);
             info.name = screen->Name();
             info.screen_ptr = screen;
+            info.icon = screen->Icon(cfg.dark_theme);
             apps_.push_back(info);
         }
     }
@@ -66,8 +67,12 @@ void TaskManagerPanel::Draw() {
                           cfg.dark_theme ? SELECTOR_COLOUR_DARK : SELECTOR_COLOUR_LIGHT);
             }
             
-            // App name
-            C2D::Text(panel_x + 10, item_y + 5, 0.45f,
+            // App icon (scaled to the row), then the name next to it
+            if (const C2D_Image *icon = apps_[i].icon) {
+                float scale = icon_size / icon->subtex->width;
+                C2D::ImageScale(*icon, panel_x + 10, item_y + 3, scale, scale);
+            }
+            C2D::Text(panel_x + 32, item_y + 5, 0.45f,
                       cfg.dark_theme ? WHITE : BLACK, apps_[i].name.c_str());
         }
     }

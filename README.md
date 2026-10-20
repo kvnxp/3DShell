@@ -14,13 +14,17 @@ Using as boot.3dsx (Homebrew Launcher replacement):
 
 On top of the file management features, it also acts as your homebrew menu:
 - Navigate to any `.3dsx` file and press A to run it. Chainloading uses Luma3DS's `hb:ldr` port (Homebrew Menu compatible), with a ninjhax 2.x fallback.
-- Press SELECT (or the NetLoader touch button) in the file browser to open the netloader and send payloads from your PC over the network with `3dslink`. It waits for a Wi-Fi connection, shows the device `ip:port` and live transfer speed; received files are stored in `sdmc:/3ds/`.
+- Open NetLoader from the app drawer to send payloads from your PC over the network with `3dslink`. It waits for a Wi-Fi connection, shows the device `ip:port` and live transfer speed; received files are stored in `sdmc:/3ds/`.
 - The browser shows homebrew icons and metadata (name, description, publisher) extracted from the SMDH data embedded in each `.3dsx`, exactly like the Homebrew Menu tiles.
 - A General Settings row filters the browser to show only `.3dsx` payloads.
 - The browser remembers the last session's folder, selection and scroll position; navigating back (B) restores where you were in each directory.
 
 Current features:
 --------------------------------------------------------------------------------
+- Multi-app desktop: apps open as tabs in the touch bar. The app drawer launches File Explorer, Notepad, NetLoader and Settings.
+- Task Manager: press SELECT at any time to list the open apps, each with its icon. A switches to the selected app, X closes it, and B returns.
+- Notepad (app drawer): opens a blank document. Save on a blank document opens a file dialog (name and file type), and Save on an existing file writes in place. Overwriting asks first, and leaving with unsaved changes asks Save, Discard or Cancel. Open goes to File Explorer to pick a text file. See [docs/TEXT_EDITOR.md](docs/TEXT_EDITOR.md).
+- START no longer closes the app.
 - Storage bar (at the very top, just beneath the current working directory).
 - Precise battery percentage using mcu::hwc.
 - Creating new folders and files.
@@ -28,15 +32,19 @@ Current features:
 - File/folder deletion.
 - Copy/Move files and folders.
 - Multi-select items for delete/cut/copy (using Y button).
-- ~~FTP server (Press select or tap the ftp icon to toggle).~~
 - Image preview (If the image is around 400 * 480 which is the size of both screens, the image will be split in half and displayed. Support for the following image formats -> BMP, GIF - non animated, JPG, PCX, PNG, PGM, PPM and TGA)
 - Extract various archives such as ZIP, RAR, and 7Z.
 - Searching for directories (allows you to quickly visit a directory by clicking the search icon on the top right (bottom screen).)
 - File properties - lets you view info on current file/folder, such as size, modified time, parent folder etc.
-- ~~File timestamps~~.
 - Browsing CTRNAND and copying data to/from CTRNAND.
 - Dir list sorting (alphabetical - ascending, alphabetical - descending, size - largest to smallest, and size - smallest to largest).
 - Online updater
+
+Debug console (developers):
+--------------------------------------------------------------------------------
+- The console broadcasts its logs over UDP port 5000. Any host on the LAN can receive them, for example with `nc -u -l 5000`.
+- It accepts debug commands from the PC over UDP port 6000.
+- To view the logs and send commands, run `cd logger && go run . <3ds-ip>` from the repository root.
 
 Building from source:
 --------------------------------------------------------------------------------

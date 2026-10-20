@@ -9,6 +9,7 @@
 #include "colours.h"
 #include "config.h"
 #include "fs.h"
+#include "key_chord.h"
 #include "log.h"
 #include "notepad.h"
 #include "osk.h"
@@ -120,27 +121,10 @@ namespace Notepad {
 
     bool IsOpen(void) { return data.open; }
     bool IsModified(void) { return data.modified; }
+    bool IsNewDocument(void) { return data.open && data.filepath.empty(); }
     NotepadData &GetData(void) { return data; }
 
-    bool Save(void) {
-        if (!data.open) return false;
-
-        std::string target = data.filepath;
-        std::string target_name = data.filename;
-        if (target.empty()) {
-            /* Untitled document: ask for a name and save in the current directory. */
-            std::string name = OSK::GetText("", "File name");
-            if (name.empty()) return false;
-            if (name.find('/') == std::string::npos && name.find('.') == std::string::npos) name += ".txt";
-            if (name.find('/') != std::string::npos || FS::FileExists(archive, cfg.cwd + name)) {
-                saved_flash = osGetTime() + 1500;
-                last_save_ok = false;
-                return false;
-            }
-            target = cfg.cwd + name;
-            target_name = name;
-        }
-
+    static bool WriteToFile(const std::string &target) {
         std::string out;
         for (size_t i = 0; i < data.lines.size(); i++) {
             out += data.lines[i];
@@ -178,11 +162,24 @@ namespace Notepad {
             FSFILE_Close(handle);
         }
 
-        data.filepath = target;
-        data.filename = target_name;
-        data.modified = false;
         saved_flash = osGetTime() + 1500;
         last_save_ok = true;
+        return true;
+    }
+
+    bool Save(void) {
+        if (!data.open || data.filepath.empty()) return false;
+        if (!WriteToFile(data.filepath)) return false;
+        data.modified = false;
+        return true;
+    }
+
+    bool SaveTo(const std::string &path) {
+        if (!data.open || path.empty()) return false;
+        if (!WriteToFile(path)) return false;
+        data.filepath = path;
+        data.filename = path.substr(path.find_last_of('/') + 1);
+        data.modified = false;
         return true;
     }
 
@@ -323,7 +320,7 @@ namespace Notepad {
         if (!data.open) return;
 
         if (data.mode == NOTEPAD_VIEW) {
-            C2D::Text(10, 30, 0.45f, cfg.dark_theme ? WHITE : BLACK, "Text Reader");
+            C2D::Text(10, 30, 0.45f, cfg.dark_theme ? WHITE : BLACK, "Notepad");
             C2D::Text(10, 50, 0.40f, cfg.dark_theme ? TEXT_MIN_COLOUR_DARK : TEXT_MIN_COLOUR_LIGHT, "A:Edit  X:Save");
             C2D::Text(10, 66, 0.40f, cfg.dark_theme ? TEXT_MIN_COLOUR_DARK : TEXT_MIN_COLOUR_LIGHT, "B:Back  Pad:Move");
 
@@ -341,8 +338,9 @@ namespace Notepad {
         }
     }
 
-    void Control(u32 kDown, u32 kHeld) {
-        if (!data.open || data.lines.empty()) return;
+    NotepadAction Control(u32 kDown, u32 kHeld) {
+        NotepadAction action = NOTEPAD_ACTION_NONE;
+        if (!data.open || data.lines.empty()) return action;
 
         // Blink
         if (osGetTime() >= cursor_blink) {
@@ -369,10 +367,9 @@ namespace Notepad {
                 data.mode = NOTEPAD_EDIT;
                 VirtualKeyboard::Reset();
             } else if (kDown & KEY_X) {
-                Save();
+                action = NOTEPAD_ACTION_SAVE;
             } else if (kDown & KEY_B) {
-                Close();
-                return;
+                return NOTEPAD_ACTION_CLOSE;
             }
 
             // Touch buttons in view mode
@@ -381,10 +378,9 @@ namespace Notepad {
                     data.mode = NOTEPAD_EDIT;
                     VirtualKeyboard::Reset();
                 } else if (Touch::Rect(115, 100, 205, 130)) {
-                    Save();
+                    action = NOTEPAD_ACTION_SAVE;
                 } else if (Touch::Rect(10, 140, 100, 170)) {
-                    Close();
-                    return;
+                    return NOTEPAD_ACTION_CLOSE;
                 }
             }
         } else { // EDIT
@@ -402,13 +398,8 @@ namespace Notepad {
                 ClampCursor();
             }
 
-            if (kDown & KEY_B) {
-                data.mode = NOTEPAD_VIEW; // back to view, keeps changes
-            } else if (kDown & KEY_X || kDown & KEY_A) {
-                // Physical keyboard has no on-screen input here; X/A = save without exiting
-                Save();
-            } else if (kDown & KEY_SELECT) {
-                // Edit current line with the system keyboard
+            if (UI::Chord(kDown, kHeld, KEY_L, KEY_A)) {
+                // L+A: edit current line with the system keyboard
                 std::string cur = data.lines[data.cursor_line];
                 std::string res = OSK::GetText(cur, "Edit line");
                 if (!res.empty() && res != cur) {
@@ -417,13 +408,19 @@ namespace Notepad {
                     data.modified = true;
                     ClampCursor();
                 }
+            } else if (kDown & KEY_B) {
+                data.mode = NOTEPAD_VIEW; // back to view, keeps changes
+            } else if (kDown & KEY_X || kDown & KEY_A) {
+                // Physical keyboard has no on-screen input here; X/A = save without exiting
+                action = NOTEPAD_ACTION_SAVE;
             } else if (kDown & KEY_START) {
-                Save();
+                action = NOTEPAD_ACTION_SAVE;
                 data.mode = NOTEPAD_VIEW;
             }
 
             VirtualKeyboard::Control(kDown);
             ClampCursor();
         }
+        return action;
     }
 }

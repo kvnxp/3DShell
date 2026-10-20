@@ -3,7 +3,6 @@
 #include "c2d_helper.h"
 #include "colours.h"
 #include "config.h"
-#include "file_explorer_screen.h"
 #include "touch.h"
 
 namespace GUI {
@@ -16,15 +15,12 @@ NotepadScreen::NotepadScreen() {
 
     touch_bar_.SetSection(TouchBar::SECTION_NONE);
     touch_bar_.AddButton(TouchBar::ICON_HOME, false).Click = [this]() {
-        Notepad::Close();
-    };
-    touch_bar_.AddButton(TouchBar::ICON_FILES, false).Click = [this]() {
-        OpenFile();
+        session_.RequestClose();
     };
 
     /* Window close X (Windows Mobile style): closes the editor. */
     touch_bar_.AddTextButton("X", ERROR_COLOUR, true).Click = [this]() {
-        Notepad::Close();
+        session_.RequestClose();
     };
 }
 
@@ -48,9 +44,15 @@ void NotepadScreen::DrawTop() {
 void NotepadScreen::DrawBottom() {
     touch_bar_.Draw();
     Notepad::DisplayBottom();
+    session_.Draw();
 }
 
 void NotepadScreen::OnTouch(const touchPosition &touch, bool down) {
+    if (session_.Busy()) {
+        session_.Touch(touch, down);
+        return;
+    }
+
     bool in_bar = down? (touch.py < 20) : bar_touching_;
 
     if (in_bar) {
@@ -65,18 +67,7 @@ void NotepadScreen::OnKeyHeld(u32 k_held) {
 }
 
 void NotepadScreen::OnKeyDown(u32 k_down) {
-    Notepad::Control(k_down, k_held_);
-}
-
-void NotepadScreen::OpenFile() {
-    /* Keep unsaved work: save first and only leave if the save succeeded
-     * (or was not needed). */
-    if (Notepad::IsModified() && !Notepad::Save())
-        return;
-
-    auto explorer = std::make_unique<FileExplorerScreen>();
-    if (R_SUCCEEDED(explorer->Init()))
-        UI::ScreenManager::Instance().Push(std::move(explorer));
+    session_.KeyDown(k_down, k_held_);
 }
 
 }

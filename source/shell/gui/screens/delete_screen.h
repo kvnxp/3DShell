@@ -4,6 +4,7 @@
 #include "gui.h"
 
 #include "screen.h"
+#include "textures.h"
 #include "screen_manager.h"
 
 namespace GUI {
@@ -11,6 +12,7 @@ namespace GUI {
 class DeleteScreen : public UI::Screen {
 public:
     const char *Name() const override { return "delete-dialog"; }
+    const C2D_Image *Icon(bool dark_theme) const override { return dark_theme ? &dialog_dark : &dialog; }
     DeleteScreen(UI::Screen *owner, MenuItem *item);
 
 

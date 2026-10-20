@@ -15,12 +15,12 @@ TextReaderScreen::TextReaderScreen(MenuItem *item)
 
     touch_bar_.SetSection(TouchBar::SECTION_NONE);
     touch_bar_.AddButton(TouchBar::ICON_HOME, false).Click = [this]() {
-        Notepad::Close();
+        session_.RequestClose();
     };
 
     /* Window close X (Windows Mobile style): closes the editor. */
     touch_bar_.AddTextButton("X", ERROR_COLOUR, true).Click = [this]() {
-        Notepad::Close();
+        session_.RequestClose();
     };
 }
 
@@ -47,9 +47,15 @@ void TextReaderScreen::DrawTop() {
 void TextReaderScreen::DrawBottom() {
     touch_bar_.Draw();
     Notepad::DisplayBottom();
+    session_.Draw();
 }
 
 void TextReaderScreen::OnTouch(const touchPosition &touch, bool down) {
+    if (session_.Busy()) {
+        session_.Touch(touch, down);
+        return;
+    }
+
     bool in_bar = down? (touch.py < 20) : bar_touching_;
 
     if (in_bar) {
@@ -64,7 +70,7 @@ void TextReaderScreen::OnKeyHeld(u32 k_held) {
 }
 
 void TextReaderScreen::OnKeyDown(u32 k_down) {
-    Notepad::Control(k_down, k_held_);
+    session_.KeyDown(k_down, k_held_);
 }
 
 }

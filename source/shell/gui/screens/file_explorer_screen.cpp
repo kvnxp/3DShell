@@ -93,9 +93,14 @@ namespace GUI {
             }
         };
 
-        /* Window close X (Windows Mobile style): pops back to the desktop. */
+        /* Window close X (Windows Mobile style): closes the drawer if it is
+         * open, otherwise pops back to the desktop. */
         touch_bar_.AddTextButton("X", ERROR_COLOUR, true).Click = [this]() {
-            UI::ScreenManager::Instance().Pop();
+            if (drawer_) {
+                CloseDrawer();
+            } else {
+                UI::ScreenManager::Instance().Pop();
+            }
         };
     }
 

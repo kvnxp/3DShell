@@ -2,6 +2,7 @@
 #define _3D_SHELL_TASK_MANAGER_PANEL_H
 
 #include "panel_app.h"
+#include <citro2d.h>
 #include <vector>
 #include <string>
 
@@ -20,11 +21,13 @@ private:
         std::string id;
         std::string name;
         void *screen_ptr;
+        const C2D_Image *icon;
     };
 
     std::vector<AppInfo> apps_;
     int selection_ = 0;
     static const int item_height = 25;
+    static constexpr float icon_size = 16.0f;
 
     void RefreshApps();
     void SwitchToSelectedApp();
