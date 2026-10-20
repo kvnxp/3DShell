@@ -50,6 +50,7 @@ FolderView::Palette FolderPalette() {
         dark? SELECTOR_COLOUR_DARK : SELECTOR_COLOUR_LIGHT,
         BAR_COLOUR,
         TITLE_COLOUR,
+        dark,
     };
 }
 
@@ -256,6 +257,10 @@ UI::Rect FileDialogScreen::ButtonRect(size_t index) const {
     float count = static_cast<float>(buttons_.size());
     float w = (CONTENT_W - BUTTON_GAP * (count - 1.0f)) / count;
     return UI::Rect{LEFT_X + static_cast<float>(index) * (w + BUTTON_GAP), BUTTON_Y, w, BUTTON_H};
+}
+
+void FileDialogScreen::OnFrame(u64 delta_time) {
+    folder_.PumpIcons();
 }
 
 void FileDialogScreen::OnKeyDown(u32 k_down) {

@@ -55,6 +55,7 @@ public:
 
     void DrawTop() override;
     void DrawBottom() override;
+    void OnFrame(u64 delta_time) override;
     void OnKeyDown(u32 k_down) override;
     void OnTouch(const touchPosition &touch, bool down) override;
 

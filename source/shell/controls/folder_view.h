@@ -2,6 +2,7 @@
 #define _3D_SHELL_FOLDER_VIEW_H
 
 #include <3ds.h>
+#include <citro2d.h>
 
 #include <functional>
 #include <string>
@@ -9,6 +10,7 @@
 
 #include <control.h>
 #include "controls/scroll_bar.h"
+#include "fs.h"
 
 namespace GUI {
 
@@ -23,6 +25,8 @@ public:
         u32 selector;
         u32 scroll_track;
         u32 scroll_thumb;
+        /* Picks the light or dark folder icon. */
+        bool dark_icons;
     };
 
     FolderView(const UI::Rect &bounds, size_t rows, const Palette &palette);
@@ -46,6 +50,9 @@ public:
     /* Fires with a message when a folder cannot be opened. */
     std::function<void(const std::string &message)> Failed;
 
+    /* Loads SMDH icons for the visible .3dsx rows. Call once per frame. */
+    void PumpIcons();
+
     void Draw() override;
     void OnKeyDown(u32 k_down) override;
 
@@ -53,11 +60,15 @@ private:
     struct Item {
         std::string name;
         bool is_dir;
+        FileType type;
+        /* Full UTF-16 path, only set for .3dsx files. */
+        std::u16string smdh_path;
     };
 
     void Refresh();
     void EnsureSelectedVisible();
     void Activate();
+    void DrawIcon(const C2D_Image &image, float x, float y) const;
 
     std::string cwd_;
     bool show_files_ = true;

@@ -100,7 +100,14 @@ navigated with UP/DOWN (selection), A (open folder or choose file), and B
 |---|---|
 | `Navigate(path)` / `GoParent()` / `Cwd()` | Change or read the current folder. `Navigate` returns `false` when the folder does not exist and fires `Failed` |
 | `SetShowFiles(bool)` / `SetExtensions(list)` | Show files and filter them by extension (empty list = all files) |
+| `PumpIcons()` | Loads SMDH icons for the visible `.3dsx` rows. The host calls it every frame from `OnFrame()` |
 | `Changed()` / `FileChosen(name)` / `Failed(msg)` | Callbacks for the host |
+
+Each row draws a 16 px icon at x = 4 and the name at x = 26, using the same
+assets as the File Explorer: the folder icon (`icon_dir` / `icon_dir_dark`,
+chosen by `Palette::dark_icons`), the SMDH icon scaled from 48 px for `.3dsx`
+files (falls back to the default file icon), and `file_icons[type]` for the
+other types.
 
 The list has no touch selection: the touch screen (gfx1) is occupied by the
 host's own controls. Used by `FileDialogScreen`; `FileExplorerScreen` still
