@@ -41,6 +41,9 @@ private:
     MenuItem *item_;
     u64 delta_time_ = 0;
     u32 k_held_ = 0;
+    int nav_dir_ = 0;
+    u64 nav_timer_ = 0;
+    bool nav_repeat_ = false;
     bool properties_ = false;
     float ok_height_ = 0.0f, ok_width_ = 0.0f, scale_factor_ = 0.0f, width_ = 0.0f, height_ = 0.0f, zoom_factor_ = 1.0f;
     int pos_x_ = 0, pos_y_ = 0;

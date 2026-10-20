@@ -7,6 +7,7 @@
 #include "colours.h"
 #include "config.h"
 #include "fs.h"
+#include "key_chord.h"
 #include "textures.h"
 #include "utils.h"
 
@@ -190,13 +191,13 @@ void ImageViewerScreen::Control(u32 k_down) {
                 pos_x_ += ((velocity * zoom_factor_) * (delta_time_));
         }
 
-        if ((k_held_ & KEY_DUP) || (k_held_ & KEY_CSTICK_UP)) {
+        if ((k_held_ & KEY_DUP) || (k_held_ & KEY_CSTICK_UP) || ((k_held_ & KEY_L) && (k_held_ & KEY_Y))) {
             zoom_factor_ += 0.5f * ((delta_time_) * 0.001);
 
             if (zoom_factor_ > 2.0f)
                 zoom_factor_ = 2.0f;
         }
-        else if ((k_held_ & KEY_DDOWN) || (k_held_ & KEY_CSTICK_DOWN)) {
+        else if ((k_held_ & KEY_DDOWN) || (k_held_ & KEY_CSTICK_DOWN) || ((k_held_ & KEY_L) && (k_held_ & KEY_B))) {
             zoom_factor_ -= 0.5f * ((delta_time_) * 0.001);
 
             if (zoom_factor_ < 0.5f)
@@ -208,7 +209,7 @@ void ImageViewerScreen::Control(u32 k_down) {
             }
         }
 
-        if (k_down & KEY_SELECT) { // Reset zoom/pos
+        if (UI::Chord(k_down, k_held_, KEY_L, KEY_X)) { // Reset zoom/pos
             pos_x_ = 0;
             pos_y_ = 0;
             zoom_factor_ = 1.0f;
@@ -219,14 +220,33 @@ void ImageViewerScreen::Control(u32 k_down) {
         if (properties_)
             properties_ = false;
     }
-    if (!properties_ && (k_down & (KEY_DLEFT | KEY_L))) {
-        /* Previous image in the directory (wraps around). */
-        SwitchImage(-1);
+
+    /* D-Pad left/right: one step per press, then repeats while held. */
+    int nav_dir = (k_held_ & KEY_DLEFT) ? -1 : ((k_held_ & KEY_DRIGHT) ? 1 : 0);
+    if (properties_ || nav_dir == 0) {
+        nav_dir_ = 0;
+        nav_timer_ = 0;
+        nav_repeat_ = false;
     }
-    else if (!properties_ && (k_down & (KEY_DRIGHT | KEY_R))) {
+    else if (nav_dir != nav_dir_) {
+        nav_dir_ = nav_dir;
+        nav_timer_ = 0;
+        nav_repeat_ = false;
+        SwitchImage(nav_dir);
+    }
+    else {
+        nav_timer_ += delta_time_;
+        if (nav_timer_ >= (nav_repeat_ ? 120 : 400)) {
+            nav_timer_ = 0;
+            nav_repeat_ = true;
+            SwitchImage(nav_dir);
+        }
+    }
+
+    if (!properties_ && (k_down & KEY_R)) {
         SwitchImage(1);
     }
-    if (k_down & KEY_B) {
+    if ((k_down & KEY_B) && !(k_held_ & KEY_L)) { // L+B is zoom out, not exit
         if (!properties_) {
             delete[] item_->texture.tex;
             delete[] item_->texture.subtex;
@@ -238,7 +258,7 @@ void ImageViewerScreen::Control(u32 k_down) {
         else
             properties_ = false;
     }
-    else if (k_down & KEY_X) {
+    else if ((k_down & KEY_X) && !(k_held_ & KEY_L)) { // L+X is zoom reset
         if (!properties_)
             properties_ = true;
     }
